@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Conferência de Carregamento — GDM</title>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<style>
+  :root{
+    --bg:#12151a;
+    --panel:#1b2028;
+    --panel-2:#232a35;
+    --border:#323b49;
+    --text:#e9e7e1;
+    --dim:#8b93a3;
+    --amber:#f2a93b;
+    --cyan:#4fb8c4;
+    --red:#e2574c;
+    --green:#5cb87a;
+    --mono: 'SF Mono','Cascadia Code','Roboto Mono',Consolas,monospace;
+    --sans: 'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  #app{display:flex;flex-direction:column;height:100vh;}
+
+  /* NAVBAR */
+  #navbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 18px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;
+  }
+  #navbar .brand{display:flex;align-items:baseline;gap:10px;}
+  #navbar .brand .tag{
+    font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--bg);
+    background:var(--amber);padding:2px 7px;border-radius:2px;font-weight:700;
+  }
+  #navbar h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.02em;}
+  .app-version{font-size:9px;color:var(--dim);font-family:var(--mono);background:var(--panel-2);padding:2px 6px;border-radius:3px;white-space:nowrap;}
+  #navbar .sub{font-size:11px;color:var(--dim);font-family:var(--mono);}
+  #usuario-logado{display:flex;align-items:center;gap:8px;}
+  #usuario-email{font-size:10.5px;color:var(--dim);font-family:var(--mono);}
+  #btn-logout{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--dim);
+    padding:5px 10px;border-radius:5px;font-size:10.5px;cursor:pointer;white-space:nowrap;
+  }
+  #btn-logout:hover{border-color:var(--red);color:var(--red);}
+  #btn-logout.hidden-btn{display:none;}
+  #tabs{display:flex;gap:2px;background:var(--panel-2);border-radius:6px;padding:2px;}
+  #tabs button{
+    background:transparent;border:none;color:var(--dim);font-family:var(--sans);
+    font-size:12.5px;padding:7px 14px;border-radius:5px;cursor:pointer;font-weight:600;
+  }
+  #tabs button.active{background:var(--amber);color:#1a1200;}
+
+  #main{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+
+  /* ---- TELA DE IMPORTAR ---- */
+  #view-importar{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .import-box{
+    max-width:520px;width:100%;background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    padding:32px;text-align:center;
+  }
+  .import-box h2{margin:0 0 8px;font-size:18px;}
+  .import-box p{color:var(--dim);font-size:13px;line-height:1.6;margin:0 0 22px;}
+  .drop-zone{
+    border:2px dashed var(--border);border-radius:10px;padding:36px 20px;cursor:pointer;
+    transition:border-color .15s;
+  }
+  .drop-zone:hover, .drop-zone.dragover{border-color:var(--amber);}
+  .drop-zone .icon{font-size:38px;margin-bottom:10px;}
+  .drop-zone .txt{font-size:13px;color:var(--dim);}
+  .drop-zone .txt b{color:var(--amber);}
+  #import-file-input{display:none;}
+  #import-error{color:var(--red);font-size:12.5px;margin-top:14px;font-family:var(--mono);}
+
+  /* ---- CARGA HEADER ---- */
+  #carga-header{
+    padding:5px 16px;background:#171b22;border-bottom:1px solid var(--border);
+    display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;
+  }
+  #carga-header .info-item{font-size:10.5px;display:flex;align-items:baseline;gap:5px;}
+  #carga-header .info-item .l{color:var(--dim);text-transform:uppercase;font-size:8px;letter-spacing:.04em;font-family:var(--mono);white-space:nowrap;}
+  #carga-header .info-item .v{font-weight:700;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;}
+  #progress-wrap{flex:1;min-width:160px;}
+  #progress-bar-bg{height:5px;background:var(--panel-2);border-radius:3px;overflow:hidden;margin-top:2px;}
+  #progress-bar-fill{height:100%;background:var(--green);transition:width .25s;}
+  #progress-label{font-family:var(--mono);font-size:10px;font-weight:700;}
+  #btn-trocar-carga{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--dim);
+    padding:4px 9px;border-radius:5px;font-size:10px;cursor:pointer;
+  }
+
+  /* ---- SCAN AREA ---- */
+  #scan-area{padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--border);}
+  #scan-input{
+    width:100%;font-size:19px;font-family:var(--mono);padding:9px 16px;border-radius:8px;
+    background:var(--panel-2);border:2px solid var(--border);color:var(--text);text-align:center;
+    letter-spacing:.03em;
+  }
+  #scan-input:focus{outline:none;border-color:var(--amber);}
+  #scan-feedback{
+    margin-top:10px;padding:12px;border-radius:8px;text-align:center;font-size:15px;font-weight:700;
+    display:none;
+  }
+  #scan-feedback.show{display:block;}
+  #scan-feedback.ok{background:rgba(92,184,122,.18);color:var(--green);border:1px solid var(--green);}
+  #scan-feedback.warn{background:rgba(242,169,59,.18);color:var(--amber);border:1px solid var(--amber);}
+  #scan-feedback.err{background:rgba(226,87,76,.18);color:var(--red);border:1px solid var(--red);}
+  #scan-feedback .fb-sub{font-size:12px;font-weight:400;margin-top:4px;font-family:var(--mono);color:var(--dim);}
+
+  /* ---- LISTS ---- */
+  #lists-wrap{flex:1;overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:18px;}
+  .list-section h3{
+    font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);
+    margin:0 0 8px;font-family:var(--mono);display:flex;align-items:center;gap:8px;
+  }
+  .list-section h3 .count{background:var(--panel-2);padding:1px 7px;border-radius:10px;color:var(--text);}
+  .pallet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;}
+  #grid-pendentes{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+  .pallet-card{
+    background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:9px 11px;font-size:11.5px;
+  }
+  #grid-pendentes .pallet-card{padding:14px 16px;font-size:13px;line-height:1.5;}
+  #grid-pendentes .pallet-card .pid{font-size:13px;}
+  #grid-pendentes .pallet-card .pmeta{font-size:12px;}
+  #grid-pendentes .pallet-card .plocal{font-size:13px;}
+  #grid-pendentes .pallet-card .pstatus{font-size:11.5px;}
+  .pallet-card.conferido{border-color:var(--green);background:rgba(92,184,122,.08);}
+  .pallet-card.manual{border-color:var(--cyan);background:rgba(79,184,196,.08);}
+  .pallet-card .pid{font-family:var(--mono);font-weight:700;font-size:11px;word-break:break-all;}
+  .pallet-card .pmeta{color:var(--dim);font-size:10.5px;margin-top:3px;}
+  .pallet-card .plocal{font-size:11px;font-weight:700;margin-top:5px;color:var(--cyan);}
+  .pallet-card .plocal.sem-local{color:var(--dim);font-weight:400;font-style:italic;}
+  .pallet-card .premontado{
+    display:block;font-size:11px;font-weight:800;margin-bottom:8px;padding:6px 9px;
+    background:var(--amber);color:#1a1200;letter-spacing:.02em;border-radius:5px;text-align:center;
+  }
+  .pallet-card.tem-remontagem{border-color:var(--amber);border-width:2px;}
+  .pallet-card .pstatus{margin-top:6px;font-size:10px;font-family:var(--mono);}
+  .pallet-card .pstatus.pend{color:var(--amber);}
+  .pallet-card .pstatus.ok{color:var(--green);}
+  .pallet-card .pstatus.man{color:var(--cyan);}
+  .pallet-card button.manual-btn{
+    margin-top:7px;width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--cyan);
+    padding:5px;border-radius:4px;font-size:10px;cursor:pointer;
+  }
+
+  .diverg-item{
+    background:rgba(226,87,76,.1);border:1px solid var(--red);border-radius:6px;padding:9px 11px;
+    display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:6px;
+  }
+  .diverg-item .code{font-family:var(--mono);font-weight:700;}
+  .diverg-item .time{color:var(--dim);font-size:10.5px;margin-left:8px;}
+  .diverg-item button{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--dim);
+    padding:4px 10px;border-radius:4px;font-size:10.5px;cursor:pointer;
+  }
+  .diverg-item.dismissed{opacity:.5;}
+
+  /* ---- FOOTER / RELEASE ---- */
+  #release-bar{
+    padding:14px 18px;background:#171b22;border-top:1px solid var(--border);
+    display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+  }
+  #release-bar input{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    padding:8px 10px;border-radius:5px;font-size:12.5px;width:220px;
+  }
+  #release-bar label{font-size:10.5px;color:var(--dim);text-transform:uppercase;font-family:var(--mono);display:block;margin-bottom:3px;}
+  #btn-liberar{
+    background:var(--green);color:#062b12;border:none;padding:12px 22px;border-radius:6px;
+    font-weight:700;font-size:13.5px;cursor:pointer;margin-left:auto;
+  }
+  #btn-liberar:disabled{background:var(--panel-2);color:var(--dim);cursor:not-allowed;}
+  #release-reason{font-size:11px;color:var(--red);font-family:var(--mono);}
+
+  /* ---- MODALS ---- */
+  .modal-overlay{position:fixed;inset:0;background:rgba(8,10,13,.75);display:flex;align-items:center;justify-content:center;z-index:80;}
+  .modal-overlay.hidden{display:none;}
+  .modal-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:22px;width:440px;max-width:92vw;}
+  .modal-box h3{margin:0 0 12px;font-size:15px;}
+  .modal-box textarea, .modal-box input{
+    width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    padding:9px;border-radius:5px;font-size:13px;margin-bottom:12px;
+  }
+  .modal-box .actions{display:flex;justify-content:flex-end;gap:8px;}
+  .modal-box button{padding:8px 16px;border-radius:5px;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--panel-2);color:var(--text);}
+  .modal-box button.primary{background:var(--amber);color:#1a1200;border-color:var(--amber);}
+
+  /* ---- HISTÓRICO ---- */
+  #view-historico{display:none;flex:1;overflow:auto;padding:24px;}
+  table.hist-table{width:100%;max-width:1100px;margin:0 auto;border-collapse:collapse;font-size:12px;background:var(--panel);border-radius:8px;overflow:hidden;}
+  table.hist-table th{background:var(--panel-2);color:var(--dim);text-align:left;padding:9px 10px;font-size:10px;text-transform:uppercase;font-family:var(--mono);border-bottom:1px solid var(--border);}
+  table.hist-table td{padding:9px 10px;border-bottom:1px solid var(--border);}
+  .status-liberado{color:var(--green);font-weight:700;}
+  .mini-btn-expand{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--amber);
+    width:24px;height:24px;border-radius:5px;cursor:pointer;font-size:14px;font-weight:700;line-height:1;
+  }
+
+  /* ---- FILA DE CARGAS ---- */
+  table.fila-table{width:100%;border-collapse:collapse;font-size:12px;background:var(--panel);border-radius:8px;overflow:hidden;}
+  table.fila-table th{background:var(--panel-2);color:var(--dim);text-align:left;padding:9px 10px;font-size:10px;text-transform:uppercase;font-family:var(--mono);border-bottom:1px solid var(--border);}
+  table.fila-table td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  table.fila-table tr:hover{background:rgba(255,255,255,.02);}
+  .badge-status{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:10px;font-weight:700;white-space:nowrap;}
+  .badge-status.aguardando{background:rgba(139,147,163,.18);color:var(--dim);}
+  .badge-status.andamento{background:rgba(242,169,59,.18);color:var(--amber);}
+  .badge-status.liberado{background:rgba(92,184,122,.18);color:var(--green);}
+  .fila-progress{font-family:var(--mono);font-size:11px;color:var(--dim);}
+  .btn-fila-abrir{background:var(--amber);color:#1a1200;border:none;padding:6px 14px;border-radius:5px;font-size:11.5px;font-weight:700;cursor:pointer;}
+  .mini-btn-import{background:var(--panel-2);border:1px solid var(--border);color:var(--dim);padding:6px 12px;border-radius:5px;font-size:11px;cursor:pointer;white-space:nowrap;}
+  .mini-btn-import:hover{border-color:var(--amber);color:var(--amber);}
+  tr.fila-grupo td{
+    background:var(--panel-2);color:var(--amber);font-weight:700;font-size:11px;
+    padding:7px 10px;letter-spacing:.02em;
+  }
+  .btn-fila-remover{background:transparent;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:2px 8px;}
+  .btn-fila-remover:hover{color:var(--red);}
+  .fila-empty{text-align:center;color:var(--dim);padding:40px;background:var(--panel);border-radius:8px;font-size:13px;}
+
+  /* ---- PRINT ---- */
+  #print-sheet{display:none;}
+  @media print{
+    body *{visibility:hidden;}
+    #print-sheet, #print-sheet *{visibility:visible;}
+    #print-sheet{display:block !important;position:absolute;top:0;left:0;width:100%;background:#fff;color:#111;padding:24px;}
+  }
+  #print-sheet table{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px;}
+  #print-sheet th{background:#1b2028;color:#fff;padding:6px;text-align:left;font-size:9.5px;text-transform:uppercase;}
+  #print-sheet td{padding:5px 6px;border-bottom:1px solid #ddd;}
+
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px;}
+
+  /* ---- RESPONSIVO (coletores/telas estreitas) ---- */
+  @media (max-width: 640px){
+    #navbar{padding:8px 12px;flex-wrap:wrap;gap:8px;}
+    #navbar h1{font-size:13px;}
+    #navbar .sub{display:none;}
+    #tabs button{padding:6px 10px;font-size:11.5px;}
+
+    #carga-header{padding:7px 12px;gap:8px 14px;}
+    #carga-header .info-item{flex:1 1 40%;min-width:80px;}
+    #progress-wrap{flex-basis:100%;order:10;}
+    #btn-trocar-carga{flex-basis:100%;order:11;margin-top:2px;}
+
+    #scan-area{padding:8px 12px;}
+    #scan-input{font-size:17px;padding:8px 12px;}
+
+    #lists-wrap{padding:12px;gap:14px;}
+    .pallet-grid, #grid-pendentes{grid-template-columns:1fr;}
+    #grid-pendentes .pallet-card{padding:12px 14px;}
+
+    #release-bar{padding:10px 12px;flex-direction:column;align-items:stretch;}
+    #release-bar input{width:100%;}
+    #btn-liberar{margin-left:0;width:100%;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="navbar">
+    <div class="brand">
+      <span class="tag">GDM</span>
+      <h1>Conferência de Carregamento</h1>
+      <span class="app-version" title="Versão deste aplicativo">v2026.08.03</span>
+      <span class="sub">conferência por ID de palete · coletor de dados</span>
+      <span class="sub" id="fb-status" style="margin-left:10px;"></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div id="tabs">
+        <button id="tab-fila" class="active">📋 Fila de Cargas</button>
+        <button id="tab-conferencia">Conferência</button>
+        <button id="tab-historico">📊 Histórico</button>
+      </div>
+      <div id="usuario-logado">
+        <span id="usuario-email"></span>
+        <button id="btn-logout" title="Sair da conta de administrador">🔒 Sair</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="main">
+    <!-- FILA DE CARGAS -->
+    <div id="view-fila" style="flex:1;overflow:auto;padding:20px;">
+      <div style="max-width:1100px;margin:0 auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);font-family:var(--mono);margin:0;">
+            Cargas na fila <span id="fila-count" style="background:var(--panel-2);padding:1px 7px;border-radius:10px;color:var(--text);"></span>
+          </h3>
+          <button id="btn-import-manual" class="mini-btn-import">📥 Adicionar arquivo manualmente</button>
+        </div>
+        <input type="file" id="import-file-input" accept=".json,application/json" style="display:none;">
+        <div id="import-error"></div>
+        <div id="fila-wrap"></div>
+      </div>
+    </div>
+
+    <!-- TELA DE CONFERÊNCIA -->
+    <div id="view-conferencia" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+      <div id="carga-header">
+        <div class="info-item"><div class="l">Carga</div><div class="v" id="hdr-nome">—</div></div>
+        <div class="info-item"><div class="l">Veículo</div><div class="v" id="hdr-veiculo">—</div></div>
+        <div class="info-item"><div class="l">Placa</div><div class="v" id="hdr-placa">—</div></div>
+        <div class="info-item"><div class="l">Transportadora</div><div class="v" id="hdr-transportadora">—</div></div>
+        <div class="info-item"><div class="l">Motorista</div><div class="v" id="hdr-motorista">—</div></div>
+        <div id="progress-wrap">
+          <span id="progress-label">0 / 0 conferidos</span>
+          <div id="progress-bar-bg"><div id="progress-bar-fill" style="width:0%;"></div></div>
+        </div>
+        <button id="btn-trocar-carga">← Voltar para a fila</button>
+      </div>
+
+      <div id="scan-area">
+        <input type="text" id="scan-input" placeholder="Bipe ou digite o ID do palete aqui..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <div id="scan-feedback"></div>
+      </div>
+
+      <div id="lists-wrap">
+        <div class="list-section" id="section-pendentes">
+          <h3>Pendentes <span class="count" id="count-pendentes">0</span></h3>
+          <div class="pallet-grid" id="grid-pendentes"></div>
+        </div>
+        <div class="list-section" id="section-divergencias" style="display:none;">
+          <h3>⚠ Divergências (paletes bipados que não pertencem a esta carga) <span class="count" id="count-divergencias">0</span></h3>
+          <div id="lista-divergencias"></div>
+        </div>
+        <div class="list-section">
+          <h3>Conferidos <span class="count" id="count-conferidos">0</span></h3>
+          <div class="pallet-grid" id="grid-conferidos"></div>
+        </div>
+      </div>
+
+      <div id="release-bar">
+        <div>
+          <label>Conferido / liberado por</label>
+          <input type="text" id="conferente-nome" placeholder="Nome de quem está conferindo">
+        </div>
+        <div id="release-reason"></div>
+        <button id="btn-liberar" disabled>🚛 Liberar Caminhão</button>
+      </div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div id="view-historico">
+      <div style="max-width:1100px;margin:0 auto 6px;">
+        <h2 style="margin:0;font-size:16px;">Histórico de Conferências</h2>
+        <p style="color:var(--dim);font-size:11.5px;margin:4px 0 14px;">
+          Registro permanente de todas as conferências liberadas neste navegador — não pode ser apagado ou editado.
+        </p>
+      </div>
+      <div id="hist-wrap"></div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-manual" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>Conferência manual</h3>
+    <p style="color:var(--dim);font-size:12px;margin-top:-6px;">
+      Use somente se a etiqueta do palete estiver danificada/ilegível. Fica registrado no
+      relatório como conferência manual, não como leitura de ID.
+    </p>
+    <input type="text" id="manual-motivo" placeholder="Motivo (ex: etiqueta rasgada)">
+    <div class="actions">
+      <button id="btn-manual-cancel">Cancelar</button>
+      <button id="btn-manual-confirm" class="primary">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-admin-login" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>🔒 Login de Administrador necessário</h3>
+    <p style="color:var(--dim);font-size:12px;margin-top:-6px;">
+      Remover uma carga da fila só pode ser feito por um usuário Administrador. Entre com
+      seu e-mail e senha para confirmar.
+    </p>
+    <input type="email" id="admin-login-email" placeholder="seu.email@gdmplasticos.com.br" autocomplete="username" style="margin-bottom:8px;">
+    <input type="password" id="admin-login-senha" placeholder="Senha" autocomplete="current-password">
+    <div id="admin-login-erro" style="color:var(--red);font-size:11.5px;margin-top:8px;min-height:14px;"></div>
+    <div class="actions">
+      <button id="btn-admin-login-cancel">Cancelar</button>
+      <button id="btn-admin-login-confirm" class="primary">Entrar e remover</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-liberar" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>Confirmar liberação do caminhão</h3>
+    <p style="color:var(--dim);font-size:12px;">
+      Todos os paletes desta carga foram conferidos. Confirma a liberação do caminhão
+      <b id="liberar-conferente-nome" style="color:var(--text);"></b> para saída?
+    </p>
+    <div class="actions">
+      <button id="btn-liberar-cancel">Cancelar</button>
+      <button id="btn-liberar-confirm" class="primary">Confirmar Liberação</button>
+    </div>
+  </div>
+</div>
+
+<div id="print-sheet"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  const $ = (id)=>document.getElementById(id);
+  const LS_HIST_KEY = "gdm_conf_historico";
+  const LS_FILA_KEY = "gdm_conf_fila";
+
+  let filaCargas = [];   // [{ queueId, manifest, estado, importadoEm }]
+  let activeQueueId = null;
+  let manifest = null;   // referência ao manifest do item ativo da fila
+  let estado = null;     // referência ao estado do item ativo da fila
+
+  function escapeHtml(s){ return (s||"").toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function fmt(n){ return (n||0).toLocaleString('pt-BR',{maximumFractionDigits:1}); }
+
+  // Chave única por palete dentro do manifesto: usa o ID físico quando existe, senão
+  // um identificador sintético baseado em pedido+seq+romaneio+índice (para os raros
+  // paletes sem ID, que exigem conferência manual).
+  function chaveDoPalete(p, idx){
+    return p.id ? ("ID:"+p.id) : ("SEMID:"+p.pedido+"-"+(p.seq||"")+"-"+(p.romaneio||"")+"-"+idx);
+  }
+
+  // Extrai a placa do campo "Motorista / Placa" (formato "Nome - PLACA"), usada para
+  // organizar a fila. Se não achar um separador, volta string vazia.
+  function extrairPlaca(motoristaStr){
+    if(!motoristaStr) return "";
+    const partes = String(motoristaStr).split(/\s+-\s+/);
+    if(partes.length>1) return partes[partes.length-1].trim().toUpperCase();
+    return "";
+  }
+
+  // Prefere o campo separado "placa" (novo formato); cai para extrair da string
+  // combinada "Nome - PLACA" só em arquivos exportados antes dessa separação.
+  function obterPlaca(doc){
+    if(!doc) return "";
+    if(doc.placa) return String(doc.placa).trim().toUpperCase();
+    return extrairPlaca(doc.motorista);
+  }
+
+  function extrairNomeMotorista(motoristaStr){
+    if(!motoristaStr) return "";
+    const partes = String(motoristaStr).split(/\s+-\s+/);
+    return partes.length>1 ? partes.slice(0,-1).join(" - ").trim() : motoristaStr.trim();
+  }
+
+  /* ---------------- SOM (feedback de bipe) ---------------- */
+  let audioCtx = null;
+  function beep(freq, dur, tipo){
+    try{
+      if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = tipo||"sine";
+      osc.frequency.value = freq;
+      gain.gain.value = 0.15;
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+dur);
+      osc.stop(audioCtx.currentTime+dur);
+    }catch(e){/* silencioso se o navegador bloquear audio sem interacao */}
+  }
+  function beepOk(){ beep(880,0.12); }
+  function beepWarn(){ beep(520,0.15); }
+  function beepErr(){ beep(220,0.28,"square"); }
+
+  /* ---------------- FIREBASE ---------------- */
+  // Mesma configuração usada no app de Montagem de Carga 3D — os dois apontam para a
+  // mesma coleção "cargas" no Firestore. Se a nuvem não estiver disponível (sem SDK
+  // carregado, sem internet, projeto não configurado), o app cai automaticamente para
+  // funcionar 100% local, sem quebrar nada.
+  const firebaseConfig = {
+    apiKey: "AIzaSyACWzB60zxraOxec2nnkkyCl4k5EkYL7mE",
+    authDomain: "gdm-cargas.firebaseapp.com",
+    projectId: "gdm-cargas",
+    storageBucket: "gdm-cargas.firebasestorage.app",
+    messagingSenderId: "224755544038",
+    appId: "1:224755544038:web:ceb52c7742b8e263193027"
+  };
+  let fbDb = null, fbAvailable = false, fbAuth = null;
+  try{
+    if(window.firebase){
+      firebase.initializeApp(firebaseConfig);
+      fbDb = firebase.firestore();
+      fbDb.enablePersistence({synchronizeTabs:true}).catch(()=>{ /* ok se já habilitado em outra aba */ });
+      fbAvailable = true;
+      fbAuth = firebase.auth();
+      // Persistência só nesta aba — assim o login/logout aqui não afeta outras abas
+      // (ex.: o app de Montagem de Carga 3D aberto em outra aba), mesmo usando o mesmo
+      // projeto Firebase.
+      fbAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
+    }
+  }catch(e){ console.warn("Firebase indisponível:", e); }
+
+  function atualizarStatusNuvem(texto, cor){
+    const el = $("fb-status");
+    if(el){ el.textContent = texto; el.style.color = cor; }
+  }
+
+  /* ---------------- LOGIN DE ADMIN (só exigido para remover carga da fila) ---------------- */
+  // Diferente do app de Montagem, aqui o login NÃO trava o app inteiro — só é pedido na
+  // hora de remover uma carga da fila, e só usuários marcados como "admin" na coleção
+  // "usuarios" do Firestore conseguem confirmar a remoção.
+  let queueIdPendenteRemocao = null;
+
+  // Mostra o e-mail e o botão de sair só quando alguém realmente está logado (o login
+  // aqui é sob demanda, só pra confirmar exclusões — a maior parte do tempo ninguém
+  // precisa estar logado pra usar o resto do app).
+  if(fbAuth){
+    fbAuth.onAuthStateChanged(user=>{
+      if(user){
+        $("usuario-email").textContent = user.email;
+        $("btn-logout").classList.remove("hidden-btn");
+      } else {
+        $("usuario-email").textContent = "";
+        $("btn-logout").classList.add("hidden-btn");
+      }
+    });
+    $("btn-logout").onclick = ()=>{
+      if(confirm("Sair da conta de administrador neste aparelho?")) fbAuth.signOut();
+    };
+  }
+  $("btn-logout").classList.add("hidden-btn");
+
+  async function verificarSeAdmin(uid){
+    if(!fbDb || !uid) return false;
+    try{
+      const doc = await fbDb.collection("usuarios").doc(uid).get();
+      return doc.exists && doc.data().role === "admin";
+    }catch(e){
+      console.warn("Erro ao verificar permissão de admin:", e);
+      return false;
+    }
+  }
+
+  function traduzErroLogin(err){
+    const code = err.code || "";
+    if(code.includes("wrong-password") || code.includes("invalid-credential")) return "E-mail ou senha incorretos.";
+    if(code.includes("user-not-found")) return "Usuário não encontrado.";
+    if(code.includes("too-many-requests")) return "Muitas tentativas — aguarde um pouco e tente de novo.";
+    if(code.includes("invalid-email")) return "E-mail inválido.";
+    return "Erro ao entrar: " + (err.message || "verifique sua conexão e tente de novo.");
+  }
+
+  async function pedirLoginAdminEExcluir(queueId){
+    if(!fbAuth){
+      alert("Login de administrador indisponível agora (sem conexão com a nuvem). Tente novamente quando estiver online.");
+      return;
+    }
+    // Se já tem alguém logado E essa pessoa é admin, não precisa pedir login de novo.
+    const userAtual = fbAuth.currentUser;
+    if(userAtual){
+      const jaEhAdmin = await verificarSeAdmin(userAtual.uid);
+      if(jaEhAdmin){ executarRemocao(queueId); return; }
+    }
+    queueIdPendenteRemocao = queueId;
+    $("admin-login-email").value = "";
+    $("admin-login-senha").value = "";
+    $("admin-login-erro").textContent = "";
+    $("modal-admin-login").classList.remove("hidden");
+    setTimeout(()=>$("admin-login-email").focus(), 50);
+  }
+
+  $("btn-admin-login-cancel").onclick = ()=>{
+    $("modal-admin-login").classList.add("hidden");
+    queueIdPendenteRemocao = null;
+  };
+  $("btn-admin-login-confirm").onclick = async ()=>{
+    const email = $("admin-login-email").value.trim();
+    const senha = $("admin-login-senha").value;
+    if(!email || !senha){ $("admin-login-erro").textContent = "Informe e-mail e senha."; return; }
+    $("admin-login-erro").textContent = "";
+    const btn = $("btn-admin-login-confirm");
+    btn.disabled = true; btn.textContent = "Verificando...";
+    try{
+      const cred = await fbAuth.signInWithEmailAndPassword(email, senha);
+      const ehAdmin = await verificarSeAdmin(cred.user.uid);
+      if(!ehAdmin){
+        $("admin-login-erro").textContent = "Esse usuário não tem permissão de Administrador para remover cargas.";
+        return;
+      }
+      $("modal-admin-login").classList.add("hidden");
+      if(queueIdPendenteRemocao) executarRemocao(queueIdPendenteRemocao);
+      queueIdPendenteRemocao = null;
+    }catch(err){
+      $("admin-login-erro").textContent = traduzErroLogin(err);
+    }finally{
+      btn.disabled = false; btn.textContent = "Entrar e remover";
+    }
+  };
+  $("admin-login-senha").addEventListener("keydown", e=>{ if(e.key==="Enter") $("btn-admin-login-confirm").click(); });
+
+  /* ---------------- FILA DE CARGAS ---------------- */
+  function lerFila(){
+    try{ return JSON.parse(localStorage.getItem(LS_FILA_KEY)) || []; }catch(e){ return []; }
+  }
+  function salvarFila(){
+    localStorage.setItem(LS_FILA_KEY, JSON.stringify(filaCargas));
+  }
+
+  if(fbAvailable){
+    atualizarStatusNuvem("☁️ conectando...", "var(--dim)");
+    fbDb.collection("cargas").orderBy("importadoEm","desc").onSnapshot(snapshot=>{
+      const todos = snapshot.docs.map(doc=>Object.assign({queueId:doc.id}, doc.data()));
+      // Ignora documentos corrompidos/incompletos (ex.: campos apagados manualmente no
+      // Firestore Console em vez do documento inteiro) — em vez de travar a fila toda,
+      // mostra só as cargas válidas e avisa quantas foram ignoradas.
+      const validas = todos.filter(f=> f.manifest && Array.isArray(f.manifest.paletes) && f.estado && f.estado.paletes);
+      const ignoradas = todos.length - validas.length;
+      filaCargas = validas;
+      atualizarStatusNuvem(
+        `☁️ nuvem conectada · ${filaCargas.length} carga(s)` + (ignoradas>0 ? ` · ⚠ ${ignoradas} corrompida(s) ignorada(s)` : ""),
+        ignoradas>0 ? "var(--amber)" : "var(--green)"
+      );
+      renderFila();
+      // Se a carga aberta na tela foi atualizada por outro operador (ou por este mesmo
+      // aparelho confirmando a escrita), sincroniza a visão de Conferência também.
+      if(activeQueueId){
+        const atual = filaCargas.find(f=>f.queueId===activeQueueId);
+        if(atual){
+          manifest = atual.manifest; estado = atual.estado;
+          if($("view-conferencia").style.display!=="none"){ renderHeader(); renderListas(); }
+        }
+      }
+    }, err=>{
+      console.error("Erro Firestore:", err);
+      atualizarStatusNuvem("☁️ erro de conexão — usando dados locais", "var(--red)");
+      filaCargas = lerFila();
+      renderFila();
+    });
+  } else {
+    atualizarStatusNuvem("💾 modo local (sem nuvem)", "var(--dim)");
+    filaCargas = lerFila();
+  }
+
+  const fileInput = $("import-file-input");
+  $("btn-import-manual").onclick = ()=> fileInput.click();
+  const viewFilaEl = $("view-fila");
+  viewFilaEl.addEventListener("dragover", e=>{ e.preventDefault(); });
+  viewFilaEl.addEventListener("drop", e=>{
+    e.preventDefault();
+    if(e.dataTransfer.files[0]) carregarManifestoArquivo(e.dataTransfer.files[0]);
+  });
+  fileInput.onchange = ()=>{
+    if(fileInput.files[0]) carregarManifestoArquivo(fileInput.files[0]);
+    fileInput.value = "";
+  };
+
+  function carregarManifestoArquivo(file){
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const data = JSON.parse(reader.result);
+        if(!data || data.formato!=="gdm-conferencia-manifesto" || !Array.isArray(data.paletes)){
+          throw new Error("Este arquivo não é um manifesto de conferência válido (esperado formato \"gdm-conferencia-manifesto\").");
+        }
+        adicionarNaFila(data);
+        $("import-error").textContent = "";
+      }catch(err){
+        $("import-error").textContent = "Erro: " + err.message;
+      }
+    };
+    reader.onerror = ()=>{ $("import-error").textContent = "Erro ao ler o arquivo."; };
+    reader.readAsText(file, "utf-8");
+  }
+
+  // Toda carga adicionada é SEMPRE um item novo e 100% zerado na fila — nunca reaproveita
+  // ou mistura progresso de outra carga, mesmo que o arquivo tenha o mesmo nome/conteúdo.
+  // Quando a nuvem está disponível, o item entra direto no Firestore e aparece sozinho
+  // para todos os operadores; sem nuvem, fica só neste aparelho.
+  function adicionarNaFila(data){
+    const estadoNovo = { paletes:{}, divergencias:[], liberado:false };
+    data.paletes.forEach((p,idx)=>{
+      estadoNovo.paletes[chaveDoPalete(p,idx)] = { status:"pendente" };
+    });
+    const queueId = "q_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
+    const importadoEm = new Date().toISOString();
+
+    if(fbAvailable){
+      fbDb.collection("cargas").doc(queueId).set({manifest:data, estado:estadoNovo, importadoEm}).catch(err=>{
+        alert("Não foi possível sincronizar com a nuvem (a carga ficará só neste aparelho): " + err.message);
+        filaCargas.push({queueId, manifest:data, estado:estadoNovo, importadoEm});
+        salvarFila();
+        renderFila();
+      });
+      // o onSnapshot atualiza filaCargas e chama renderFila() automaticamente quando confirmar
+    } else {
+      filaCargas.push({queueId, manifest:data, estado:estadoNovo, importadoEm});
+      salvarFila();
+      renderFila();
+    }
+  }
+
+  function removerDaFila(queueId){
+    const item = filaCargas.find(f=>f.queueId===queueId);
+    if(!item) return;
+    const aviso = item.estado.liberado
+      ? "Esta carga já foi liberada. Removê-la da fila NÃO afeta o histórico permanente de conferências. Remover mesmo assim?"
+      : "Esta carga ainda não foi conferida totalmente. Remover mesmo assim?";
+    if(!confirm(aviso)) return;
+    pedirLoginAdminEExcluir(queueId);
+  }
+  window.__removerDaFila = removerDaFila;
+
+  // Só executa depois que pedirLoginAdminEExcluir confirmar que quem está pedindo é
+  // Administrador (seja porque já estava logado como admin, seja por ter acabado de
+  // entrar com e-mail/senha no modal).
+  function executarRemocao(queueId){
+    const item = filaCargas.find(f=>f.queueId===queueId);
+    if(!item) return;
+    if(fbAvailable){
+      fbDb.collection("cargas").doc(queueId).delete().catch(err=>{
+        alert("Não foi possível remover da nuvem: " + err.message + (item.estado.liberado ? "\n(Cargas já liberadas ficam protegidas contra remoção — isso é intencional.)" : ""));
+      });
+    } else {
+      filaCargas = filaCargas.filter(f=>f.queueId!==queueId);
+      salvarFila();
+      renderFila();
+    }
+    if(activeQueueId===queueId){ activeQueueId=null; manifest=null; estado=null; }
+  }
+
+  function abrirItemFila(queueId){
+    const item = filaCargas.find(f=>f.queueId===queueId);
+    if(!item) return;
+    activeQueueId = queueId;
+    manifest = item.manifest;
+    estado = item.estado;
+    mudarParaAba("conferencia");
+    renderHeader();
+    renderListas();
+    $("scan-input").value = "";
+    setTimeout(()=>$("scan-input").focus(), 50);
+  }
+  window.__abrirItemFila = abrirItemFila;
+
+  // Salva o estado (paletes conferidos, divergências, liberação) da carga atualmente
+  // aberta. Vai direto para o Firestore quando disponível — assim qualquer outro
+  // aparelho olhando essa mesma carga vê a atualização quase em tempo real; sem nuvem,
+  // cai para o armazenamento local do navegador.
+  function persistirEstadoAtivo(){
+    if(fbAvailable && activeQueueId){
+      fbDb.collection("cargas").doc(activeQueueId).update({estado}).catch(err=>{
+        console.error("Erro ao sincronizar com a nuvem:", err);
+        salvarFila();
+      });
+    } else {
+      salvarFila();
+    }
+  }
+
+  function statusItemFila(item){
+    if(item.estado.liberado) return {cls:"liberado", label:"✓ Liberado"};
+    const conferidos = Object.values(item.estado.paletes).filter(p=>p.status==="conferido"||p.status==="manual").length;
+    if(conferidos>0) return {cls:"andamento", label:"Em conferência"};
+    return {cls:"aguardando", label:"Aguardando"};
+  }
+
+  function renderFila(){
+    $("fila-count").textContent = filaCargas.length;
+    const wrap = $("fila-wrap");
+    if(filaCargas.length===0){
+      wrap.innerHTML = '<div class="fila-empty">Nenhuma carga na fila ainda. Adicione um arquivo de conferência acima.</div>';
+      return;
+    }
+    try{
+      // organiza por data/hora de recebimento (a mais antiga primeiro — quem chegou
+      // primeiro aparece primeiro na fila, como numa fila de verdade)
+      // Cargas já liberadas vão pro final da lista — o que importa ver primeiro é o que
+      // ainda está pendente/em andamento; dentro de cada grupo, mantém a ordem de chegada.
+      const ordenada = filaCargas.slice().sort((a,b)=>{
+        const la = a.estado.liberado ? 1 : 0, lb = b.estado.liberado ? 1 : 0;
+        if(la !== lb) return la - lb;
+        return new Date(a.importadoEm) - new Date(b.importadoEm);
+      });
+      const linhas = ordenada.map(item=>{
+        const st = statusItemFila(item);
+        const total = item.manifest.paletes.length;
+        const conferidos = Object.values(item.estado.paletes).filter(p=>p.status==="conferido"||p.status==="manual").length;
+        const motoristaCompleto = (item.manifest.doc&&item.manifest.doc.motorista) || "";
+        const placa = obterPlaca(item.manifest.doc) || "—";
+        const nomeMotorista = extrairNomeMotorista(motoristaCompleto) || "—";
+        const transp = (item.manifest.doc&&item.manifest.doc.transportadora) || "—";
+        const recebidoEm = item.importadoEm ? new Date(item.importadoEm).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : "—";
+
+        return `<tr>
+          <td style="font-family:var(--mono);font-size:10.5px;">${recebidoEm}</td>
+          <td>${escapeHtml(transp)}</td>
+          <td style="font-family:var(--mono);">${escapeHtml(placa)}</td>
+          <td>${escapeHtml(nomeMotorista)}</td>
+          <td>${escapeHtml(item.manifest.nomeCarga||"")}</td>
+          <td>${escapeHtml(item.manifest.veiculo||"")}</td>
+          <td><span class="badge-status ${st.cls}">${st.label}</span></td>
+          <td class="fila-progress">${conferidos} / ${total}</td>
+          <td>
+            <button class="btn-fila-abrir" onclick="__abrirItemFila('${item.queueId}')">${item.estado.liberado?'Ver':'Abrir'}</button>
+            <button class="btn-fila-remover" onclick="__removerDaFila('${item.queueId}')" title="Remover da fila">✕</button>
+          </td>
+        </tr>`;
+      }).join("");
+      wrap.innerHTML = `
+        <table class="fila-table">
+          <thead><tr>
+            <th>Recebido em</th><th>Transportadora</th><th>Placa</th><th>Motorista</th><th>Carga</th><th>Veículo</th>
+            <th>Status</th><th>Progresso</th><th></th>
+          </tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+      `;
+    }catch(err){
+      console.error("Erro ao desenhar a fila:", err);
+      wrap.innerHTML = `<div class="fila-empty">⚠ Erro ao exibir a fila (${escapeHtml(err.message)}). Alguma carga pode estar com dados incompletos — veja o console do navegador para detalhes.</div>`;
+    }
+  }
+  renderFila();
+
+  $("btn-trocar-carga").onclick = ()=>{
+    mudarParaAba("fila");
+  };
+
+  /* ---------------- HEADER / PROGRESSO ---------------- */
+  function renderHeader(){
+    $("hdr-nome").textContent = manifest.nomeCarga || "—";
+    $("hdr-veiculo").textContent = manifest.veiculo || "—";
+    $("hdr-placa").textContent = obterPlaca(manifest.doc) || "—";
+    $("hdr-transportadora").textContent = (manifest.doc && manifest.doc.transportadora) || "—";
+    $("hdr-motorista").textContent = (manifest.doc && manifest.doc.motorista) || "—";
+  }
+
+  function totalEconferidos(){
+    const total = manifest.paletes.length;
+    const conferidos = Object.values(estado.paletes).filter(p=>p.status==="conferido"||p.status==="manual").length;
+    return {total, conferidos};
+  }
+
+  function renderProgresso(){
+    const {total, conferidos} = totalEconferidos();
+    const pct = total>0 ? (conferidos/total*100) : 0;
+    $("progress-label").textContent = `${conferidos} / ${total} conferidos`;
+    $("progress-bar-fill").style.width = pct+"%";
+    $("progress-bar-fill").style.background = pct>=100 ? "var(--green)" : (pct>50?"var(--amber)":"var(--red)");
+    atualizarBotaoLiberar();
+  }
+
+  function divergenciasPendentes(){
+    return estado.divergencias.filter(d=>!d.dismissed);
+  }
+
+  function atualizarBotaoLiberar(){
+    const {total, conferidos} = totalEconferidos();
+    const tudoConferido = total>0 && conferidos===total;
+    const semDivergencias = divergenciasPendentes().length===0;
+    const nomeOk = $("conferente-nome").value.trim().length>0;
+    const btn = $("btn-liberar");
+    const motivo = $("release-reason");
+    if(estado.liberado){
+      btn.disabled = true;
+      btn.textContent = "✓ Caminhão já liberado";
+      motivo.textContent = "";
+      return;
+    }
+    btn.textContent = "🚛 Liberar Caminhão";
+    if(tudoConferido && semDivergencias && nomeOk){
+      btn.disabled = false;
+      motivo.textContent = "";
+    } else {
+      btn.disabled = true;
+      const faltando = [];
+      if(!tudoConferido) faltando.push(`faltam ${total-conferidos} palete(s) conferir`);
+      if(!semDivergencias) faltando.push(`${divergenciasPendentes().length} divergência(s) não resolvida(s)`);
+      if(!nomeOk) faltando.push("informe quem está conferindo");
+      motivo.textContent = "Pendente: " + faltando.join(" · ");
+    }
+  }
+  $("conferente-nome").addEventListener("input", atualizarBotaoLiberar);
+
+  /* ---------------- LISTAS DE PALETES ---------------- */
+  function paletteCardHtml(p, idx){
+    const chave = chaveDoPalete(p,idx);
+    const st = estado.paletes[chave];
+    const idLabel = p.id ? p.id : "(sem ID — conferência manual)";
+    let statusHtml = "";
+    let cls = "";
+    if(st.status==="conferido"){ cls="conferido"; statusHtml = `<div class="pstatus ok">✓ Conferido ${st.timestamp?new Date(st.timestamp).toLocaleTimeString('pt-BR'):''}</div>`; }
+    else if(st.status==="manual"){ cls="manual"; statusHtml = `<div class="pstatus man">✎ Manual: ${escapeHtml(st.motivo||'')}</div>`; }
+    else { statusHtml = `<div class="pstatus pend">Pendente</div>`; }
+
+    let manualBtn = "";
+    if(st.status==="pendente" && !p.id){
+      manualBtn = `<button class="manual-btn" onclick="__abrirManual('${chave}')">✎ Conferir manualmente</button>`;
+    }
+
+    const localHtml = p.local
+      ? `<div class="plocal">📍 ${escapeHtml(p.local)}</div>`
+      : `<div class="plocal sem-local">📍 Sem localização</div>`;
+
+    const remontadoHtml = p.remontadoSobre
+      ? `<div class="premontado">⬆ REMONTADO sobre ${escapeHtml(p.remontadoSobre)}</div>`
+      : '';
+
+    return `<div class="pallet-card ${cls}${p.remontadoSobre?' tem-remontagem':''}">
+      ${remontadoHtml}
+      <div class="pid">${escapeHtml(idLabel)}</div>
+      <div class="pmeta">${escapeHtml(p.pedido)}${p.seq?'-'+escapeHtml(p.seq):''}${p.romaneio!=null?' · Rom.'+p.romaneio:''}<br>${escapeHtml(p.cliente||'')}</div>
+      ${localHtml}
+      ${statusHtml}
+      ${manualBtn}
+    </div>`;
+  }
+
+  function renderListas(){
+    const pendentes = [], conferidos = [];
+    manifest.paletes.forEach((p,idx)=>{
+      const chave = chaveDoPalete(p,idx);
+      const st = estado.paletes[chave];
+      if(st.status==="pendente") pendentes.push({p,idx});
+      else conferidos.push({p,idx});
+    });
+
+    $("count-pendentes").textContent = pendentes.length;
+    $("count-conferidos").textContent = conferidos.length;
+    $("grid-pendentes").innerHTML = pendentes.map(({p,idx})=>paletteCardHtml(p,idx)).join("") || '<div style="color:var(--dim);font-size:12px;">Nenhum palete pendente.</div>';
+    $("grid-conferidos").innerHTML = conferidos.map(({p,idx})=>paletteCardHtml(p,idx)).join("") || '<div style="color:var(--dim);font-size:12px;">Nenhum palete conferido ainda.</div>';
+
+    const divPendentes = divergenciasPendentes();
+    $("section-divergencias").style.display = estado.divergencias.length>0 ? "block" : "none";
+    $("count-divergencias").textContent = divPendentes.length;
+    $("lista-divergencias").innerHTML = estado.divergencias.map((d,i)=>`
+      <div class="diverg-item ${d.dismissed?'dismissed':''}">
+        <span><span class="code">${escapeHtml(d.codigo)}</span><span class="time">${new Date(d.timestamp).toLocaleTimeString('pt-BR')}</span></span>
+        ${d.dismissed ? '<span style="color:var(--dim);font-size:11px;">descartada</span>' : `<button onclick="__descartarDivergencia(${i})">Descartar</button>`}
+      </div>
+    `).join("");
+
+    renderProgresso();
+  }
+
+  window.__abrirManual = function(chave){
+    pendingManualChave = chave;
+    $("manual-motivo").value = "";
+    $("modal-manual").classList.remove("hidden");
+  };
+  let pendingManualChave = null;
+  $("btn-manual-cancel").onclick = ()=> $("modal-manual").classList.add("hidden");
+  $("btn-manual-confirm").onclick = ()=>{
+    if(!pendingManualChave) return;
+    const motivo = $("manual-motivo").value.trim() || "sem motivo informado";
+    estado.paletes[pendingManualChave] = { status:"manual", motivo, timestamp: new Date().toISOString() };
+    if(!estado.primeiroScanEm) estado.primeiroScanEm = new Date().toISOString();
+    persistirEstadoAtivo();
+    renderListas();
+    $("modal-manual").classList.add("hidden");
+  };
+
+  window.__descartarDivergencia = function(i){
+    estado.divergencias[i].dismissed = true;
+    persistirEstadoAtivo();
+    renderListas();
+  };
+
+  /* ---------------- BIPAGEM / SCAN ---------------- */
+  function mostrarFeedback(tipo, texto, sub){
+    const el = $("scan-feedback");
+    el.className = "show " + tipo;
+    el.innerHTML = `${texto}${sub?`<div class="fb-sub">${escapeHtml(sub)}</div>`:''}`;
+    clearTimeout(mostrarFeedback._t);
+    mostrarFeedback._t = setTimeout(()=>{ el.classList.remove("show"); }, 2600);
+  }
+
+  function processarBipe(codigo){
+    codigo = (codigo||"").trim();
+    if(!codigo) return;
+    if(estado.liberado){
+      mostrarFeedback("warn", "⚠ Este caminhão já foi liberado", "Nenhuma alteração foi registrada.");
+      beepWarn();
+      return;
+    }
+
+    // procura o palete pelo ID físico dentro do manifesto
+    let encontrado = null, chaveEncontrada = null;
+    manifest.paletes.forEach((p,idx)=>{
+      if(p.id && p.id===codigo){ encontrado = p; chaveEncontrada = chaveDoPalete(p,idx); }
+    });
+
+    if(!encontrado){
+      estado.divergencias.push({codigo, timestamp:new Date().toISOString(), dismissed:false});
+      persistirEstadoAtivo();
+      renderListas();
+      mostrarFeedback("err", "✗ Palete não pertence a esta carga", `ID bipado: ${codigo}`);
+      beepErr();
+      return;
+    }
+
+    const st = estado.paletes[chaveEncontrada];
+    if(st.status==="conferido" || st.status==="manual"){
+      mostrarFeedback("warn", "⚠ Este palete já foi conferido antes", `${encontrado.pedido}${encontrado.seq?'-'+encontrado.seq:''}`);
+      beepWarn();
+      return;
+    }
+
+    estado.paletes[chaveEncontrada] = { status:"conferido", timestamp:new Date().toISOString() };
+    if(!estado.primeiroScanEm) estado.primeiroScanEm = new Date().toISOString();
+    persistirEstadoAtivo();
+    renderListas();
+    mostrarFeedback("ok", "✓ Palete conferido", `${encontrado.pedido}${encontrado.seq?'-'+encontrado.seq:''} — ${encontrado.cliente||''}`);
+    beepOk();
+  }
+
+  const scanInput = $("scan-input");
+  scanInput.addEventListener("keydown", e=>{
+    if(e.key==="Enter"){
+      e.preventDefault();
+      processarBipe(scanInput.value);
+      scanInput.value = "";
+    }
+  });
+  // Mantém o foco sempre no campo de bipe (coletor de dados normalmente só digita ali)
+  document.addEventListener("click", (e)=>{
+    if($("view-conferencia").style.display!=="none" && !e.target.closest(".modal-overlay") && !e.target.closest("button") && !e.target.closest("input")){
+      scanInput.focus();
+    }
+  });
+
+  /* ---------------- LIBERAR CAMINHÃO ---------------- */
+  $("btn-liberar").onclick = ()=>{
+    if($("btn-liberar").disabled) return;
+    $("liberar-conferente-nome").textContent = $("conferente-nome").value.trim();
+    $("modal-liberar").classList.remove("hidden");
+  };
+  $("btn-liberar-cancel").onclick = ()=> $("modal-liberar").classList.add("hidden");
+  $("btn-liberar-confirm").onclick = ()=>{
+    estado.liberado = true;
+    estado.liberadoPor = $("conferente-nome").value.trim();
+    estado.liberadoEm = new Date().toISOString();
+    persistirEstadoAtivo();
+    const entradaHistorico = registrarHistorico();
+    $("modal-liberar").classList.add("hidden");
+    renderListas();
+    renderFila();
+    gerarRelatorioImpressao();
+    enviarEmailConferencia(entradaHistorico);
+    alert("Caminhão liberado com sucesso! O app de e-mail do coletor deve abrir com o relatório pronto para enviar a expedicao@gdmplasticos.com.br. Um relatório também foi gerado para impressão.");
+  };
+
+  /* ---------------- HISTÓRICO ---------------- */
+  function lerHistorico(){
+    try{ return JSON.parse(localStorage.getItem(LS_HIST_KEY)) || []; }catch(e){ return []; }
+  }
+
+  // Quando a nuvem está disponível, o histórico mostrado é derivado direto das cargas
+  // liberadas na coleção compartilhada (visível para todos os operadores). Sem nuvem,
+  // cai para o registro local deste navegador.
+  function obterHistoricoParaExibir(){
+    if(fbAvailable){
+      return filaCargas
+        .filter(f=>f.estado && f.estado.liberado)
+        .map(f=>{
+          const placa = obterPlaca(f.manifest.doc);
+          const paletesDetalhe = f.manifest.paletes.map((p,idx)=>{
+            const st = f.estado.paletes[chaveDoPalete(p,idx)] || {status:"pendente"};
+            return {
+              id: p.id||null, pedido: p.pedido, seq: p.seq||"", romaneio: p.romaneio,
+              cliente: p.cliente||"", local: p.local||"", dims: p.dims||null, peso: p.peso||0,
+              status: st.status, timestamp: st.timestamp||null, motivo: st.motivo||null
+            };
+          });
+          let tempoCarregamentoMs = null, tempoCarregamentoTexto = null;
+          if(f.estado.primeiroScanEm && f.estado.liberadoEm){
+            tempoCarregamentoMs = new Date(f.estado.liberadoEm) - new Date(f.estado.primeiroScanEm);
+            tempoCarregamentoTexto = formatarDuracao(tempoCarregamentoMs);
+          }
+          return {
+            nomeCarga: f.manifest.nomeCarga, veiculo: f.manifest.veiculo, placa,
+            transportadora: (f.manifest.doc&&f.manifest.doc.transportadora)||"",
+            motorista: (f.manifest.doc&&f.manifest.doc.motorista)||"", data: (f.manifest.doc&&f.manifest.doc.data)||"",
+            liberadoEm: f.estado.liberadoEm, liberadoPor: f.estado.liberadoPor,
+            primeiroScanEm: f.estado.primeiroScanEm||null, tempoCarregamentoMs, tempoCarregamentoTexto,
+            totalPaletes: f.manifest.paletes.length, divergenciasRegistradas: (f.estado.divergencias||[]).length,
+            divergencias: f.estado.divergencias||[], paletes: paletesDetalhe
+          };
+        })
+        .sort((a,b)=> new Date(b.liberadoEm) - new Date(a.liberadoEm));
+    }
+    return lerHistorico();
+  }
+
+  // Formata uma duração em milissegundos como "Xh Ymin" (ou só "Ymin" se for menos de 1h).
+  function formatarDuracao(ms){
+    if(ms==null || ms<0) return null;
+    const totalMin = Math.round(ms/60000);
+    const h = Math.floor(totalMin/60), m = totalMin%60;
+    return h>0 ? `${h}h ${m}min` : `${m}min`;
+  }
+
+  function registrarHistorico(){
+    const hist = lerHistorico();
+    const {total} = totalEconferidos();
+    const placa = obterPlaca(manifest.doc);
+    const paletesDetalhe = manifest.paletes.map((p,idx)=>{
+      const st = estado.paletes[chaveDoPalete(p,idx)];
+      return {
+        id: p.id||null, pedido: p.pedido, seq: p.seq||"", romaneio: p.romaneio,
+        cliente: p.cliente||"", local: p.local||"", dims: p.dims||null, peso: p.peso||0,
+        remontadoSobre: p.remontadoSobre||null,
+        status: st.status, timestamp: st.timestamp||null, motivo: st.motivo||null
+      };
+    });
+    // Tempo total de carregamento: do primeiro palete bipado/conferido até a liberação.
+    let tempoCarregamentoMs = null, tempoCarregamentoTexto = null;
+    if(estado.primeiroScanEm && estado.liberadoEm){
+      tempoCarregamentoMs = new Date(estado.liberadoEm) - new Date(estado.primeiroScanEm);
+      tempoCarregamentoTexto = formatarDuracao(tempoCarregamentoMs);
+    }
+    const entrada = {
+      histId: "h_" + Date.now() + "_" + Math.random().toString(36).slice(2,8),
+      nomeCarga: manifest.nomeCarga, veiculo: manifest.veiculo,
+      placa, transportadora: (manifest.doc&&manifest.doc.transportadora)||"",
+      motorista: (manifest.doc&&manifest.doc.motorista)||"", data: (manifest.doc&&manifest.doc.data)||"",
+      geradoEm: manifest.geradoEm, liberadoEm: estado.liberadoEm, liberadoPor: estado.liberadoPor,
+      primeiroScanEm: estado.primeiroScanEm||null,
+      tempoCarregamentoMs, tempoCarregamentoTexto,
+      totalPaletes: total, divergenciasRegistradas: estado.divergencias.length,
+      divergencias: estado.divergencias, paletes: paletesDetalhe
+    };
+    hist.unshift(entrada);
+    localStorage.setItem(LS_HIST_KEY, JSON.stringify(hist));
+    return entrada;
+  }
+
+  // Abre o app de e-mail do coletor (via mailto:) já preenchido com o resumo da
+  // conferência, endereçado para a expedição. O corpo fica compacto (resumo + eventuais
+  // divergências) porque links mailto: têm limite de tamanho em vários apps de e-mail;
+  // o relatório completo por palete continua disponível para impressão no app.
+  function enviarEmailConferencia(entrada){
+    const assunto = `Conferência de Carregamento - ${entrada.nomeCarga} - ${entrada.placa||'sem placa'}`;
+    const cabecalho = [
+      `Carga: ${entrada.nomeCarga}`,
+      `Veículo: ${entrada.veiculo}`,
+      `Placa: ${entrada.placa||'-'}`,
+      `Transportadora: ${entrada.transportadora||'-'}`,
+      `Motorista: ${entrada.motorista||'-'}`,
+      `Data: ${entrada.data||'-'}`,
+      "",
+      `Liberado por: ${entrada.liberadoPor}`,
+      `Liberado em: ${new Date(entrada.liberadoEm).toLocaleString('pt-BR')}`,
+      `Tempo total de carregamento: ${entrada.tempoCarregamentoTexto||'não calculado'}`,
+      `Total de paletes conferidos: ${entrada.totalPaletes}`,
+      `Divergências registradas: ${entrada.divergenciasRegistradas}`,
+      ""
+    ];
+
+    // Detalhe de cada palete carregado (ID, pedido-seq, cliente, localização) — a lista
+    // completa vai no corpo do e-mail; se ficar grande demais para o limite de alguns
+    // apps de e-mail via mailto:, corta e avisa que o restante está no relatório impresso.
+    const linhasPaletes = ["Paletes carregados:", "-".repeat(40)];
+    (entrada.paletes||[]).forEach(p=>{
+      const statusTxt = p.status==="conferido" ? "OK(ID)" : p.status==="manual" ? "OK(manual)" : "PENDENTE";
+      const localTxt = p.local ? p.local : "sem localização";
+      linhasPaletes.push(`${p.id||'(sem ID)'} | ${p.pedido}${p.seq?'-'+p.seq:''} | ${p.cliente||''} | ${localTxt} | ${statusTxt}`);
+    });
+
+    if(entrada.divergencias && entrada.divergencias.length>0){
+      linhasPaletes.push("", "Divergências (bipados que não pertencem à carga):");
+      entrada.divergencias.forEach(d=> linhasPaletes.push(`  ${d.codigo} — ${d.dismissed?'descartada':'não resolvida'}`));
+    }
+
+    const rodape = ["", "--- Envio automático do App de Conferência de Carregamento GDM ---"];
+
+    const LIMITE_SEGURO = 5500; // caracteres do corpo antes de codificar, para caber na maioria dos apps de e-mail via mailto:
+    let corpoLinhas = cabecalho.concat(linhasPaletes).concat(rodape);
+    let corpo = corpoLinhas.join("\n");
+    if(corpo.length > LIMITE_SEGURO){
+      const restante = entrada.paletes.length;
+      let acumulado = cabecalho.join("\n").length;
+      const linhasCabidas = [];
+      for(const l of linhasPaletes){
+        if(acumulado + l.length + 1 > LIMITE_SEGURO - 200) break;
+        linhasCabidas.push(l);
+        acumulado += l.length+1;
+      }
+      corpoLinhas = cabecalho.concat(linhasCabidas).concat([
+        "", `(lista cortada por tamanho — ${restante} paletes no total; veja a lista completa no relatório impresso pelo app)`
+      ]).concat(rodape);
+      corpo = corpoLinhas.join("\n");
+    }
+
+    const mailto = `mailto:expedicao@gdmplasticos.com.br?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+    window.location.href = mailto;
+  }
+
+  function renderHistoricoView(){
+    const hist = obterHistoricoParaExibir();
+    const wrap = $("hist-wrap");
+    if(hist.length===0){
+      wrap.innerHTML = '<div style="text-align:center;color:var(--dim);padding:40px;">Nenhuma conferência liberada ainda neste navegador.</div>';
+      return;
+    }
+    wrap.innerHTML = `
+      <table class="hist-table">
+        <thead><tr><th></th><th>Carga</th><th>Transportadora</th><th>Placa</th><th>Veículo</th><th>Liberado em</th><th>Liberado por</th><th>Tempo de carreg.</th><th>Paletes</th><th>Divergências</th></tr></thead>
+        <tbody>${hist.map((h,i)=>`
+          <tr>
+            <td><button class="mini-btn-expand" onclick="__toggleHistDetalhe(${i})" id="hist-toggle-${i}">+</button></td>
+            <td>${escapeHtml(h.nomeCarga||'')}</td>
+            <td>${escapeHtml(h.transportadora||'—')}</td>
+            <td style="font-family:var(--mono);">${escapeHtml(h.placa||'—')}</td>
+            <td>${escapeHtml(h.veiculo||'')}</td>
+            <td class="status-liberado">${h.liberadoEm?new Date(h.liberadoEm).toLocaleString('pt-BR'):'—'}</td>
+            <td>${escapeHtml(h.liberadoPor||'')}</td>
+            <td style="font-family:var(--mono);">${h.tempoCarregamentoTexto||'—'}</td>
+            <td>${h.totalPaletes}</td>
+            <td>${h.divergenciasRegistradas||0}</td>
+          </tr>
+          <tr id="hist-detalhe-${i}" style="display:none;">
+            <td colspan="9" style="background:var(--panel-2);padding:14px;">
+              ${(h.paletes||[]).length===0 ? '<div style="color:var(--dim);font-size:12px;">Sem detalhamento de paletes salvo para esta carga.</div>' : `
+              <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                <thead><tr style="color:var(--dim);text-align:left;">
+                  <th style="padding:4px 8px;">ID Palete</th><th style="padding:4px 8px;">Pedido-Seq</th>
+                  <th style="padding:4px 8px;">Cliente</th><th style="padding:4px 8px;">Localização</th><th style="padding:4px 8px;">Remontado</th><th style="padding:4px 8px;">Status</th><th style="padding:4px 8px;">Horário</th>
+                </tr></thead>
+                <tbody>
+                ${h.paletes.map(p=>{
+                  const statusTxt = p.status==="conferido" ? "✓ Conferido (ID)" : p.status==="manual" ? "✎ Manual: "+escapeHtml(p.motivo||'') : "Pendente";
+                  return `<tr>
+                    <td style="padding:4px 8px;font-family:var(--mono);border-bottom:1px solid var(--border);">${escapeHtml(p.id||'—')}</td>
+                    <td style="padding:4px 8px;border-bottom:1px solid var(--border);">${escapeHtml(p.pedido)}${p.seq?'-'+escapeHtml(p.seq):''}</td>
+                    <td style="padding:4px 8px;border-bottom:1px solid var(--border);">${escapeHtml(p.cliente||'')}</td>
+                    <td style="padding:4px 8px;border-bottom:1px solid var(--border);">${p.local?escapeHtml(p.local):'<span style=\"color:var(--dim);font-style:italic;\">Sem localização</span>'}</td>
+                    <td style="padding:4px 8px;border-bottom:1px solid var(--border);">${p.remontadoSobre?('<span style="background:#f2a93b;color:#1a1200;padding:2px 6px;border-radius:4px;font-weight:700;">⬆ '+escapeHtml(p.remontadoSobre)+'</span>'):''}</td>
+                    <td style="padding:4px 8px;border-bottom:1px solid var(--border);">${statusTxt}</td>
+                    <td style="padding:4px 8px;border-bottom:1px solid var(--border);">${p.timestamp?new Date(p.timestamp).toLocaleTimeString('pt-BR'):''}</td>
+                  </tr>`;
+                }).join("")}
+                </tbody>
+              </table>
+              ${(h.divergencias&&h.divergencias.length>0) ? `
+                <div style="margin-top:10px;color:var(--red);font-size:11px;"><b>Divergências:</b> ${h.divergencias.map(d=>escapeHtml(d.codigo)).join(", ")}</div>
+              ` : ''}
+              `}
+            </td>
+          </tr>
+        `).join("")}</tbody>
+      </table>
+    `;
+  }
+  window.__toggleHistDetalhe = function(i){
+    const row = $("hist-detalhe-"+i);
+    const btn = $("hist-toggle-"+i);
+    const abrindo = row.style.display==="none";
+    row.style.display = abrindo ? "table-row" : "none";
+    btn.textContent = abrindo ? "−" : "+";
+  };
+
+  /* ---------------- TABS ---------------- */
+  const tabFila = $("tab-fila"), tabConf = $("tab-conferencia"), tabHist = $("tab-historico");
+  const viewFila = $("view-fila"), viewConf = $("view-conferencia"), viewHist = $("view-historico");
+
+  function mudarParaAba(qual){
+    tabFila.classList.toggle("active", qual==="fila");
+    tabConf.classList.toggle("active", qual==="conferencia");
+    tabHist.classList.toggle("active", qual==="historico");
+    viewFila.style.display = qual==="fila" ? "block" : "none";
+    viewConf.style.display = qual==="conferencia" ? "flex" : "none";
+    viewHist.style.display = qual==="historico" ? "block" : "none";
+    if(qual==="fila") renderFila();
+    if(qual==="historico") renderHistoricoView();
+  }
+  tabFila.onclick = ()=> mudarParaAba("fila");
+  tabConf.onclick = ()=>{
+    if(!manifest){ mudarParaAba("fila"); return; }
+    mudarParaAba("conferencia");
+  };
+  tabHist.onclick = ()=> mudarParaAba("historico");
+
+  /* ---------------- RELATÓRIO DE IMPRESSÃO ---------------- */
+  function gerarRelatorioImpressao(){
+    const linhas = manifest.paletes.map((p,idx)=>{
+      const st = estado.paletes[chaveDoPalete(p,idx)];
+      const statusTxt = st.status==="conferido" ? "Conferido (ID)" : st.status==="manual" ? "Conferido (manual: "+escapeHtml(st.motivo||'')+")" : "PENDENTE";
+      return `<tr>
+        <td>${escapeHtml(p.id||'—')}</td>
+        <td>${escapeHtml(p.pedido)}${p.seq?'-'+escapeHtml(p.seq):''}</td>
+        <td>${escapeHtml(p.cliente||'')}</td>
+        <td>${p.local?escapeHtml(p.local):'Sem localização'}</td>
+        <td>${p.remontadoSobre?('<span style="background:#f2a93b;color:#1a1200;padding:2px 6px;border-radius:4px;font-weight:700;">⬆ '+escapeHtml(p.remontadoSobre)+'</span>'):''}</td>
+        <td>${statusTxt}</td>
+        <td>${st.timestamp?new Date(st.timestamp).toLocaleTimeString('pt-BR'):''}</td>
+      </tr>`;
+    }).join("");
+    const divergHtml = estado.divergencias.length>0 ? `
+      <h3>Divergências registradas</h3>
+      <table><thead><tr><th>Código bipado</th><th>Horário</th><th>Status</th></tr></thead><tbody>
+      ${estado.divergencias.map(d=>`<tr><td>${escapeHtml(d.codigo)}</td><td>${new Date(d.timestamp).toLocaleTimeString('pt-BR')}</td><td>${d.dismissed?'Descartada':'Não resolvida'}</td></tr>`).join("")}
+      </tbody></table>` : '';
+    $("print-sheet").innerHTML = `
+      <h2>Relatório de Conferência de Carregamento</h2>
+      <div style="font-size:11px;color:#666;margin-bottom:14px;">GDM Indústria e Comércio de Plásticos LTDA · gerado ${new Date().toLocaleString('pt-BR')}</div>
+      <div style="border:1px solid #ccc;border-radius:5px;padding:12px 16px;margin-bottom:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;font-size:11px;">
+        <div><b>Carga:</b> ${escapeHtml(manifest.nomeCarga||'')}</div>
+        <div><b>Veículo:</b> ${escapeHtml(manifest.veiculo||'')}</div>
+        <div><b>Motorista:</b> ${escapeHtml((manifest.doc&&manifest.doc.motorista)||'')}</div>
+        <div><b>Data:</b> ${escapeHtml((manifest.doc&&manifest.doc.data)||'')}</div>
+        <div><b>Liberado por:</b> ${escapeHtml(estado.liberadoPor||'')}</div>
+        <div><b>Liberado em:</b> ${estado.liberadoEm?new Date(estado.liberadoEm).toLocaleString('pt-BR'):''}</div>
+        <div><b>Total de paletes:</b> ${manifest.paletes.length}</div>
+        <div style="color:#2a8a4a;"><b>STATUS: LIBERADO ✓</b></div>
+      </div>
+      <table><thead><tr><th>ID Palete</th><th>Pedido-Seq</th><th>Cliente</th><th>Localização</th><th>Remontado</th><th>Status</th><th>Horário</th></tr></thead>
+      <tbody>${linhas}</tbody></table>
+      ${divergHtml}
+    `;
+  }
+
+  /* ---------------- RETOMAR SESSÃO ANTERIOR ---------------- */
+  // Se o navegador foi fechado no meio de uma conferência, tenta oferecer retomar a
+  // última carga aberta (procurando a chave mais recente salva no localStorage).
+  // Cada arquivo de carga aberto sempre começa uma conferência 100% zerada — não existe
+  // retomada de progresso salvo, propositalmente, para nunca misturar dados entre cargas.
+})();
+</script>
+</body>
+</html>

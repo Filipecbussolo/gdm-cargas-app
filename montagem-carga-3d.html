@@ -1,0 +1,3471 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Montagem de Carga 3D — GDM</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<style>
+  :root{
+    --bg:#12151a;
+    --panel:#1b2028;
+    --panel-2:#232a35;
+    --border:#323b49;
+    --text:#e9e7e1;
+    --dim:#8b93a3;
+    --amber:#f2a93b;
+    --cyan:#4fb8c4;
+    --red:#e2574c;
+    --green:#5cb87a;
+    --mono: 'SF Mono','Cascadia Code','Roboto Mono',Consolas,monospace;
+    --sans: 'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  #app{display:flex;flex-direction:column;height:100vh;}
+
+  /* NAVBAR */
+  #login-overlay{
+    position:fixed;inset:0;background:var(--bg);z-index:9999;
+    display:flex;align-items:center;justify-content:center;
+  }
+  #login-box{
+    width:340px;background:var(--panel);border:1px solid var(--border);border-radius:10px;
+    padding:28px 26px;
+  }
+  #login-sub{font-size:12px;color:var(--dim);text-align:center;margin:0 0 18px;}
+  #login-box .field label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;display:block;}
+  #login-box .field input{
+    width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    padding:9px 11px;border-radius:6px;font-size:13px;
+  }
+  #login-box .field input:focus{outline:1px solid var(--amber);border-color:var(--amber);}
+  #btn-login{
+    background:var(--amber);color:#1a1200;border:none;padding:10px;border-radius:6px;
+    font-size:13px;font-weight:700;cursor:pointer;
+  }
+  #login-erro{color:var(--red);font-size:11.5px;margin-top:10px;text-align:center;}
+  #login-status{color:var(--dim);font-size:11px;margin-top:8px;text-align:center;}
+  #usuario-logado{display:flex;align-items:center;gap:8px;margin-left:10px;}
+  #usuario-email{font-size:10.5px;color:var(--dim);font-family:var(--mono);}
+  #btn-logout{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--dim);
+    padding:5px 10px;border-radius:5px;font-size:10.5px;cursor:pointer;white-space:nowrap;
+  }
+  #btn-logout:hover{border-color:var(--red);color:var(--red);}
+
+  #navbar{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--border);
+    flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;
+  }
+  #navbar .brand{display:flex;align-items:baseline;gap:10px;flex-shrink:0;}
+  #navbar .brand .tag{
+    font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--bg);
+    background:var(--amber);padding:2px 7px;border-radius:2px;font-weight:700;
+  }
+  #navbar h1{font-size:14px;margin:0;font-weight:600;letter-spacing:.02em;white-space:nowrap;}
+  .app-version{font-size:9px;color:var(--dim);font-family:var(--mono);background:var(--panel-2);padding:2px 6px;border-radius:3px;white-space:nowrap;}
+  #navbar-carga{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+  #navbar-carga label{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;font-family:var(--mono);white-space:nowrap;}
+  #navbar-carga input{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    padding:5px 8px;border-radius:5px;font-size:12px;width:140px;font-family:var(--sans);
+  }
+  #navbar-carga input:focus{outline:1px solid var(--amber);border-color:var(--amber);}
+  #navbar-carga button{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--red);
+    padding:5px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;
+  }
+  #navbar-carga button:hover{border-color:var(--red);}
+  #navbar-right{display:flex;align-items:center;gap:12px;flex-shrink:0;margin-left:auto;}
+  #tabs{display:flex;gap:2px;background:var(--panel-2);border-radius:6px;padding:2px;flex-shrink:0;}
+  #tabs button{
+    background:transparent;border:none;color:var(--dim);font-family:var(--sans);
+    font-size:12px;padding:6px 11px;border-radius:5px;cursor:pointer;font-weight:600;white-space:nowrap;
+  }
+  #tabs button.active{background:var(--amber);color:#1a1200;}
+
+  /* TRUCK CONFIG BAR */
+  #truckbar{
+    display:flex;flex-wrap:wrap;gap:14px;align-items:end;
+    padding:10px 18px;background:#171b22;border-bottom:1px solid var(--border);flex-shrink:0;
+  }
+  .field{display:flex;flex-direction:column;gap:3px;}
+  .field label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);}
+  .field input, .field select{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    padding:6px 8px;border-radius:4px;font-size:12.5px;font-family:var(--mono);width:96px;
+  }
+  .field select{width:150px;font-family:var(--sans);}
+  .field input:focus,.field select:focus{outline:1px solid var(--amber);border-color:var(--amber);}
+  .field.wide input{width:150px;font-family:var(--sans);}
+
+  /* MAIN */
+  #main{flex:1;display:flex;overflow:hidden;}
+  #view-montagem{display:flex;flex:1;overflow:hidden;}
+  #view-romaneio{display:none;flex:1;overflow:auto;padding:28px;background:#0e1014;}
+  #view-roteiro{display:none;flex:1;overflow:auto;padding:28px;background:#0e1014;}
+  #view-historico{display:none;flex:1;overflow:auto;padding:28px;background:#0e1014;}
+  .hist-actions{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;max-width:1100px;margin:0 auto 18px;}
+  table.hist-table{width:100%;max-width:1100px;margin:0 auto;border-collapse:collapse;font-size:12px;background:var(--panel);border-radius:8px;overflow:hidden;}
+  table.hist-table th{
+    background:var(--panel-2);color:var(--dim);text-align:left;padding:9px 10px;font-size:10px;
+    text-transform:uppercase;letter-spacing:.04em;font-family:var(--mono);border-bottom:1px solid var(--border);
+  }
+  table.hist-table td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text);}
+  table.hist-table tbody tr:hover{background:rgba(255,255,255,.02);}
+  .hist-file{font-family:var(--mono);font-size:10.5px;color:var(--dim);}
+  .hist-totais{max-width:1100px;margin:14px auto 0;text-align:right;font-size:12px;color:var(--dim);}
+  .hist-totais b{color:var(--text);font-family:var(--mono);}
+  .hidden-view{display:none !important;}
+
+  /* LEFT PANEL */
+  #left-panel{
+    width:340px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+  #left-panel h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);
+    margin:0;padding:12px 14px 8px;font-family:var(--mono);border-bottom:none;flex-wrap:wrap;row-gap:6px;}
+  #pedido-form{padding:12px 14px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:62vh;overflow-y:auto;}
+  #pedido-form .full{grid-column:1/-1;}
+  #pedido-form label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;font-family:var(--mono);display:block;margin-bottom:3px;}
+  #pedido-form input{
+    width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    padding:6px 7px;border-radius:4px;font-size:12.5px;font-family:var(--sans);
+  }
+  #pedido-form input:focus{outline:1px solid var(--amber);border-color:var(--amber);}
+  #pedido-form .dims{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  #paletes-individuais-lista{max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--panel-2);}
+  .palete-individual-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap;}
+  .palete-individual-row:last-child{margin-bottom:0;}
+  .palete-individual-row .pir-label{font-size:9.5px;color:var(--dim);font-family:var(--mono);width:100%;margin-bottom:2px;}
+  .palete-individual-row input{
+    width:56px;flex-shrink:0;background:var(--panel);border:1px solid var(--border);color:var(--text);
+    padding:5px 4px;border-radius:4px;font-size:11px;text-align:center;
+  }
+  .palete-individual-row .pir-x{color:var(--dim);font-size:10px;flex-shrink:0;}
+  #add-btn{
+    grid-column:1/-1;background:var(--amber);color:#1a1200;border:none;border-radius:4px;
+    padding:9px;font-weight:700;font-size:12.5px;cursor:pointer;letter-spacing:.02em;margin-top:2px;
+  }
+  #add-btn:hover{filter:brightness(1.08);}
+
+  #pedidos-list{flex:1;overflow-y:auto;padding:10px 12px;}
+  .ped-card{
+    background:var(--panel-2);border:1px solid var(--border);border-left:4px solid var(--amber);
+    border-radius:5px;padding:9px 10px;margin-bottom:8px;position:relative;
+  }
+  .ped-card .row1{display:flex;justify-content:space-between;align-items:baseline;}
+  .ped-card .seq-tag{font-family:var(--mono);font-size:10px;color:var(--dim);font-weight:400;}
+  .ped-card .ordem-badge{
+    font-family:var(--mono);font-size:9.5px;background:rgba(79,184,196,.18);color:var(--cyan);
+    padding:2px 6px;border-radius:3px;white-space:nowrap;font-weight:700;
+  }
+  .ped-card .ordem-badge.manual{background:rgba(242,169,59,.2);color:var(--amber);}
+  .ped-card .ordem-manual-row{display:flex;align-items:center;gap:6px;margin-top:7px;}
+  .ped-card .ordem-manual-row label{font-size:9.5px;color:var(--dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.03em;}
+  .ped-card .ordem-manual-input{
+    width:54px;background:var(--panel);border:1px solid var(--border);color:var(--text);
+    padding:3px 6px;border-radius:4px;font-size:11px;font-family:var(--mono);
+  }
+  .ped-card .ordem-manual-input:focus{outline:1px solid var(--amber);border-color:var(--amber);}
+  .ped-card .pedido-num{font-family:var(--mono);font-weight:700;font-size:13px;}
+  .ped-card .cliente{font-size:11.5px;color:var(--dim);margin-top:1px;}
+  .ped-card .cidade-uf{color:var(--cyan);font-family:var(--mono);font-size:10.5px;}
+  .ped-card .item{font-size:11.5px;margin-top:5px;color:var(--text);}
+  .ped-card .meta{display:flex;gap:10px;margin-top:6px;font-family:var(--mono);font-size:10.5px;color:var(--dim);flex-wrap:wrap;}
+  .ped-card .meta b{color:var(--text);}
+  .ped-card .obs{display:inline-block;margin-top:5px;font-size:9.5px;font-family:var(--mono);
+    padding:2px 6px;border-radius:3px;background:rgba(226,87,76,.18);color:var(--red);letter-spacing:.04em;}
+  .ped-card .rm{position:absolute;top:6px;right:8px;background:none;border:none;color:var(--dim);
+    cursor:pointer;font-size:14px;line-height:1;}
+  .ped-card .rm:hover{color:var(--red);}
+  #empty-msg{color:var(--dim);font-size:12px;padding:20px 6px;text-align:center;line-height:1.6;}
+
+  .mini-btn{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--amber);
+    font-size:10.5px;padding:4px 8px;border-radius:4px;cursor:pointer;font-family:var(--mono);
+    white-space:nowrap;
+  }
+  .mini-btn:hover{border-color:var(--amber);}
+  .hidden-btn{display:none !important;}
+
+  .ped-card .card-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+  .ped-card .card-actions button{
+    flex:1;min-width:80px;background:var(--panel);border:1px solid var(--border);color:var(--text);
+    font-size:10.5px;padding:5px 6px;border-radius:4px;cursor:pointer;font-family:var(--sans);font-weight:600;
+  }
+  .ped-card .card-actions button:hover{border-color:var(--amber);color:var(--amber);}
+  .ped-card.editing{border-left-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan) inset;}
+
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(8,10,13,.72);display:flex;align-items:center;justify-content:center;
+    z-index:80;
+  }
+  .modal-overlay.hidden{display:none;}
+  .modal-box{
+    background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px 22px;
+    width:960px;max-width:95vw;max-height:88vh;display:flex;flex-direction:column;gap:10px;
+    box-shadow:0 10px 40px rgba(0,0,0,.5);
+  }
+  .modal-box h3{margin:0;font-size:15px;}
+  .modal-help{margin:0;font-size:11.5px;color:var(--dim);line-height:1.5;}
+  .modal-help code{background:var(--panel-2);padding:1px 5px;border-radius:3px;font-family:var(--mono);}
+  #import-textarea{
+    width:100%;height:320px;background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    font-family:var(--mono);font-size:11px;padding:10px;border-radius:5px;resize:vertical;line-height:1.5;
+  }
+  #import-textarea:focus{outline:1px solid var(--amber);border-color:var(--amber);}
+  #import-step-text, #import-step-review{display:flex;flex-direction:column;gap:10px;min-height:0;}
+  .modal-actions{display:flex;align-items:center;gap:8px;}
+  .modal-actions button{
+    padding:8px 16px;border-radius:5px;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid var(--border);
+    background:var(--panel-2);color:var(--text);
+  }
+  .modal-actions button.primary{background:var(--amber);color:#1a1200;border-color:var(--amber);}
+  .modal-actions button.ghost{background:transparent;color:var(--dim);border-color:transparent;}
+  .modal-actions button.ghost:hover{color:var(--red);border-color:var(--red);}
+
+  table.preview-table{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap;}
+  table.preview-table thead th{
+    position:sticky;top:0;background:#171b22;color:var(--dim);text-transform:uppercase;letter-spacing:.03em;
+    font-size:9.5px;font-family:var(--mono);padding:6px 5px;text-align:left;border-bottom:1px solid var(--border);z-index:1;
+  }
+  table.preview-table tbody td{padding:3px 4px;border-bottom:1px solid var(--border);}
+  table.preview-table input{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);border-radius:3px;
+    padding:4px 5px;font-size:11px;font-family:var(--sans);width:78px;
+  }
+  table.preview-table td:nth-child(2) input{width:130px;}
+  table.preview-table td:nth-child(4) input{width:150px;}
+  table.preview-table td:nth-child(11) input{width:90px;}
+  table.preview-table input:focus{outline:1px solid var(--amber);border-color:var(--amber);}
+  table.preview-table .pv-remove{
+    background:transparent;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:2px 6px;
+  }
+  table.preview-table .pv-remove:hover{color:var(--red);}
+
+  /* CENTER / 3D */
+  #center-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+  #toolbar{
+    display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);
+    background:#171b22;align-items:center;flex-wrap:wrap;
+  }
+  #toolbar button{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    padding:7px 12px;border-radius:5px;font-size:12px;cursor:pointer;font-family:var(--sans);font-weight:600;
+  }
+  #toolbar button:hover{border-color:var(--amber);}
+  #toolbar button.primary{background:var(--amber);color:#1a1200;border-color:var(--amber);}
+  #toolbar .divider{width:1px;height:20px;background:var(--border);margin:0 2px;}
+  #toolbar .view-presets{display:flex;gap:4px;}
+  #toolbar .view-presets button{padding:6px 9px;font-size:11px;}
+  #toolbar2{
+    display:flex;flex-direction:column;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border);
+    background:#14171d;
+  }
+  .toolbar2-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  #toolbar2 button{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    padding:6px 11px;border-radius:5px;font-size:11.5px;cursor:pointer;font-family:var(--sans);font-weight:600;
+    white-space:nowrap;
+  }
+  #toolbar2 button:hover:not(:disabled){border-color:var(--amber);}
+  #toolbar2 button:disabled{opacity:.4;cursor:not-allowed;}
+  #toolbar2 button.btn-danger-outline{color:var(--red);}
+  #toolbar2 button.btn-danger-outline:hover{border-color:var(--red);}
+  #toolbar2 button.btn-multiline{
+    display:flex;flex-direction:column;align-items:center;gap:1px;white-space:normal;line-height:1.3;
+  }
+  #toolbar2 button.btn-multiline #fb-status{font-size:9px;font-family:var(--mono);color:var(--dim);font-weight:400;}
+  #toolbar2 .divider{width:1px;height:20px;background:var(--border);margin:0 2px;flex-shrink:0;}
+  #toolbar2 select{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    padding:6px 8px;border-radius:5px;font-size:11.5px;font-family:var(--mono);
+  }
+  #canvas-wrap{flex:1;position:relative;background:radial-gradient(circle at 50% 30%,#1c222c 0%,#0e1116 100%);}
+  #canvas-wrap canvas{display:block;width:100%;height:100%;}
+  #hint{position:absolute;bottom:10px;left:14px;font-size:10.5px;color:var(--dim);font-family:var(--mono);
+    background:rgba(0,0,0,.35);padding:4px 8px;border-radius:4px;}
+  #feedback-3d{
+    position:absolute;top:14px;left:50%;transform:translateX(-50%);
+    background:rgba(20,24,32,.92);color:var(--amber);font-size:12.5px;font-weight:700;
+    padding:7px 16px;border-radius:20px;border:1px solid var(--amber);
+    opacity:0;pointer-events:none;transition:opacity .2s;white-space:nowrap;
+  }
+  #feedback-3d.show{opacity:1;}
+  #dim-overlay{
+    position:absolute;top:12px;right:14px;font-size:11px;color:var(--text);font-family:var(--mono);
+    background:rgba(10,12,16,.65);padding:9px 12px;border-radius:6px;line-height:1.7;
+    border:1px solid var(--border);min-width:200px;
+  }
+  #dim-overlay .dim-label{color:var(--dim);text-transform:uppercase;font-size:9px;letter-spacing:.04em;margin-right:6px;}
+  #dim-overlay .dim-truck{color:var(--cyan);}
+  #dim-overlay .dim-carga{color:var(--amber);}
+
+  /* STATS FOOTER */
+  #stats{
+    display:flex;gap:22px;padding:12px 18px;background:var(--panel);border-top:1px solid var(--border);
+    flex-wrap:wrap;align-items:center;
+  }
+  .stat{min-width:150px;}
+  .stat .label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);}
+  .stat .value{font-family:var(--mono);font-size:14px;font-weight:700;margin-top:2px;}
+  .bar{height:6px;border-radius:3px;background:var(--panel-2);margin-top:5px;overflow:hidden;width:100%;}
+  .bar-fill{height:100%;border-radius:3px;background:var(--green);transition:width .3s;}
+  .warn-banner{
+    background:rgba(226,87,76,.15);border:1px solid var(--red);color:var(--red);
+    padding:8px 12px;border-radius:5px;font-size:12px;font-family:var(--mono);flex-basis:100%;
+  }
+  #legend{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto;}
+  .legend-item{display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--dim);}
+  .legend-swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+
+  /* ROMANEIO / PRINT */
+  #romaneio-sheet{
+    background:#fff;color:#111;max-width:1000px;margin:0 auto;padding:34px 38px;
+    font-family:var(--sans);box-shadow:0 0 30px rgba(0,0,0,.4);
+  }
+  #romaneio-sheet h2{margin:0 0 2px;font-size:19px;letter-spacing:.01em;}
+  #romaneio-sheet .doc-sub{font-size:11px;color:#666;font-family:var(--mono);margin-bottom:16px;}
+  .rom-header{display:grid;grid-template-columns:repeat(4,1fr);gap:6px 20px;border:1px solid #ccc;
+    border-radius:5px;padding:8px 16px;margin-bottom:10px;background:#fafafa;}
+  .rom-header .f{font-size:11px;}
+  .rom-header .f .l{color:#777;text-transform:uppercase;font-size:9.5px;letter-spacing:.05em;font-family:var(--mono);}
+  .rom-header .f .v{font-weight:800;font-size:12.5px;margin-top:1px;}
+  table.rom-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:14px;}
+  table.rom-table th{
+    background:#1b2028;color:#fff;text-align:left;padding:6px 7px;font-size:9.5px;
+    text-transform:uppercase;letter-spacing:.03em;font-family:var(--mono);
+  }
+  table.rom-table td{padding:6px 7px;border-bottom:1px solid #e2e2e2;vertical-align:top;}
+  table.rom-table tr.grp-total td{font-weight:700;background:#f3f3f3;border-top:1px solid #ccc;}
+  table.rom-table .swatch{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px;}
+  .rom-totals{display:flex;gap:26px;justify-content:flex-end;margin-top:6px;font-size:12px;}
+  .rom-pedido-block{
+    margin-bottom:8px;page-break-inside:avoid;border-radius:6px;overflow:hidden;
+    box-shadow:0 0 0 1px #ddd;
+  }
+  .rom-pedido-header{
+    font-size:11px;line-height:1.4;position:relative;background:#eef2f6;
+    padding:6px 90px 6px 12px;
+  }
+  .rom-pedido-header b{color:#2c3e50;font-weight:800;}
+  .rom-pedido-header .ordem-tag{
+    position:absolute;top:6px;right:12px;background:#2c3e50;color:#fff;font-weight:700;
+    font-size:10px;padding:3px 10px;border-radius:20px;white-space:nowrap;
+  }
+  table.rom-pallet-table{font-size:9.5px;margin-bottom:0;}
+  table.rom-pallet-table th{
+    background:#eef2f6;color:#1b2d40;font-size:8px;font-weight:800;border-bottom:1px solid #d7dee6;
+    padding:3px 6px;letter-spacing:.02em;
+  }
+  table.rom-pallet-table td{padding:3px 6px;}
+  table.rom-pallet-table tr.grp-total td{
+    background:#fbeee0;color:#8a5a1a;font-weight:700;font-size:10px;border-top:none;
+  }
+  .doc-warn{background:#fff3cd;border:1px solid #e2b93b;color:#7a5a00;padding:8px 12px;border-radius:5px;font-size:11.5px;margin-bottom:14px;}
+  .rom-total-geral{box-shadow:0 0 0 2px #2c3e50;margin-top:4px;}
+  .rom-total-geral .rom-pedido-header{background:#2c3e50;color:#fff;font-size:12px;}
+  .rom-total-geral .rom-pedido-header b{color:#f2a93b;}
+  .rom-note{font-size:10.5px;color:#777;margin-top:10px;font-style:italic;}
+  .rom-3d-section{margin-top:20px;border-top:1px solid #ddd;padding-top:14px;page-break-before:always;break-before:page;}
+  .rom-3d-section h3{font-size:13px;margin:0 0 10px;}
+  .rom-3d-images{display:flex;flex-direction:column;gap:18px;}
+  .rom-3d-item{width:100%;}
+  .rom-3d-item img{
+    width:100%;border:1px solid #999;border-radius:5px;background:#ffffff;display:block;
+    filter:grayscale(1) contrast(1.2) brightness(1.03);
+  }
+  .rom-3d-caption{text-align:center;font-size:10.5px;color:#777;margin-top:4px;}
+  .rom-checklist-section{margin-top:20px;border-top:1px solid #ddd;padding-top:14px;page-break-before:always;break-before:page;}
+  .rom-checklist-section h3{font-size:13px;margin:0 0 8px;}
+  table.rom-table.checklist th:nth-child(1),table.rom-table.checklist td:nth-child(1){width:28px;text-align:center;color:#999;}
+  table.rom-table.checklist th:nth-child(2),table.rom-table.checklist td:nth-child(2){width:32px;text-align:center;font-size:15px;}
+  table.rom-table.checklist th:nth-child(3),table.rom-table.checklist td:nth-child(3){width:110px;font-family:var(--mono);font-size:10px;}
+  table.rom-table.checklist th:nth-child(4),table.rom-table.checklist td:nth-child(4){width:60px;text-align:center;font-weight:700;}
+  table.rom-table.checklist th:nth-child(9),table.rom-table.checklist td:nth-child(9){width:70px;text-align:right;}
+  table.rom-table.checklist th:nth-child(10),table.rom-table.checklist td:nth-child(10){width:70px;text-align:right;}
+  table.rom-table.checklist th:nth-child(11),table.rom-table.checklist td:nth-child(11){width:55px;text-align:center;}
+  table.rom-table.checklist .pallet-id{font-family:var(--mono);}
+  table.rom-table.checklist .sem-local{color:#999;font-style:italic;font-size:10px;}
+  table.rom-table.checklist tbody tr{page-break-inside:avoid;}
+  .rom-totals b{font-family:var(--mono);}
+  .obs-tag{font-size:9px;font-family:var(--mono);background:#eee;padding:1px 5px;border-radius:3px;color:#a3372e;font-weight:700;display:inline-block;margin:1px 0;}
+  .obs-tag.obs-remontado{background:#fff3cd;color:#8a5a00;font-size:10px;border:1px solid #f2a93b;}
+  #print-actions{max-width:1000px;margin:0 auto 14px;display:flex;justify-content:flex-end;gap:8px;}
+  #print-actions button{
+    background:var(--amber);color:#1a1200;border:none;padding:9px 16px;border-radius:5px;
+    font-weight:700;font-size:12.5px;cursor:pointer;
+  }
+
+  @page{ size: A4 landscape; margin: 2cm; }
+  @media print{
+    body *{visibility:hidden;}
+    #romaneio-sheet, #romaneio-sheet *{visibility:visible;}
+    #romaneio-sheet{position:absolute;top:0;left:0;box-shadow:none;width:100%;max-width:100%;padding:0;}
+    #print-actions{display:none !important;}
+    .rom-3d-images{margin:0;}
+  }
+
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+</style>
+</head>
+<body>
+
+<!-- TELA DE LOGIN -->
+<div id="login-overlay">
+  <div id="login-box">
+    <div class="brand" style="justify-content:center;margin-bottom:18px;">
+      <span class="tag">GDM</span>
+      <h1 style="font-size:17px;">Montagem de Carga 3D</h1>
+    </div>
+    <p id="login-sub">Entre com seu e-mail e senha para acessar.</p>
+    <div class="field" style="margin-bottom:10px;">
+      <label>E-mail</label>
+      <input type="email" id="login-email" placeholder="seu.email@gdmplasticos.com.br" autocomplete="username">
+    </div>
+    <div class="field" style="margin-bottom:14px;">
+      <label>Senha</label>
+      <input type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button id="btn-login" style="width:100%;">Entrar</button>
+    <div id="login-erro"></div>
+    <div id="login-status"></div>
+  </div>
+</div>
+
+<div id="app">
+
+  <div id="navbar">
+    <div class="brand">
+      <span class="tag">GDM</span>
+      <h1>Montagem de Carga 3D</h1>
+      <span class="app-version" title="Versão deste aplicativo">v2026.08.03</span>
+    </div>
+    <div id="navbar-carga">
+      <label for="carga-nome">Nome da Carga</label>
+      <input type="text" id="carga-nome" placeholder="Ex: Camargo Segunda-feira">
+      <button id="btn-nova-carga" class="btn-danger-outline" title="Limpa todos os pedidos e campos para começar uma carga do zero">🆕 Nova Carga</button>
+    </div>
+    <div id="navbar-right">
+      <div id="tabs">
+        <button id="tab-montagem" class="active">Montagem 3D</button>
+        <button id="tab-romaneio">Romaneio p/ Impressão</button>
+        <button id="tab-roteiro">🗺️ Roteiro de Entrega</button>
+        <button id="tab-historico">📊 Histórico de Cargas</button>
+      </div>
+      <div id="usuario-logado">
+        <span id="usuario-email"></span>
+        <button id="btn-logout" title="Sair">🚪 Sair</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="truckbar">
+    <div class="field wide">
+      <label>Veículo</label>
+      <select id="veiculo-preset">
+        <option value="toco">Toco</option>
+        <option value="truck" selected>Truck</option>
+        <option value="truck-sider">Truck Sider</option>
+        <option value="carreta-sider">Carreta Sider</option>
+        <option value="carreta-granel">Carreta Graneleira</option>
+        <option value="custom">Personalizado</option>
+      </select>
+    </div>
+    <div class="field"><label>Compr. (m)</label><input type="number" id="t-comp" step="0.05" value="8.00"></div>
+    <div class="field"><label>Largura (m)</label><input type="number" id="t-larg" step="0.05" value="2.45"></div>
+    <div class="field"><label>Altura (m)</label><input type="number" id="t-alt" step="0.05" value="2.60"></div>
+    <div class="field"><label>Capac. (kg)</label><input type="number" id="t-capac" step="50" value="8000"></div>
+    <div class="field"><label>Data</label><input type="text" id="doc-data" value="" style="width:90px"></div>
+    <div class="field wide"><label>Transportadora</label><input type="text" id="doc-transp" value="" placeholder="Nome da transportadora" style="width:190px"></div>
+    <div class="field"><label>Motorista</label><input type="text" id="doc-motorista" value="" placeholder="Nome do motorista" style="width:170px"></div>
+    <div class="field"><label>Placa</label><input type="text" id="doc-placa" value="" placeholder="ABC1D23" style="width:100px;text-transform:uppercase;"></div>
+    <div class="field wide"><label>Observação</label><input type="text" id="doc-obs" value="" placeholder="Observações do carregamento" style="width:220px"></div>
+  </div>
+
+  <div id="main">
+    <!-- MONTAGEM VIEW -->
+    <div id="view-montagem">
+      <div id="left-panel">
+        <h2 style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+          <span>Pedidos</span>
+          <span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+            <button id="btn-open-import" class="mini-btn">📋 Colar</button>
+            <button id="btn-open-file" class="mini-btn">📎 Anexar</button>
+            <button id="btn-toggle-form" class="mini-btn">✎ Manual</button>
+          </span>
+        </h2>
+        <input type="file" id="file-input" accept=".pdf,.txt,.csv" style="display:none;">
+        <div id="pedido-form" class="hidden-btn">
+          <div>
+            <label>Pedido / Seq.</label>
+            <div style="display:flex;gap:6px;">
+              <input id="f-pedido" placeholder="100213" style="flex:2;">
+              <input id="f-seq" placeholder="Seq" style="flex:1;">
+            </div>
+          </div>
+          <div><label>Cód. Item</label><input id="f-item-cod" placeholder="129285"></div>
+          <div class="full"><label>Cliente</label><input id="f-cliente" placeholder="Razão social"></div>
+          <div>
+            <label>Cidade / UF</label>
+            <div style="display:flex;gap:6px;">
+              <input id="f-cidade" placeholder="Tiete" style="flex:2;">
+              <input id="f-uf" placeholder="SP" maxlength="2" style="flex:1;text-transform:uppercase;">
+            </div>
+          </div>
+          <div class="full"><label>Descrição do item</label><input id="f-desc" placeholder="Filme PE liso 1155x0,054mm"></div>
+          <div><label>Qtd. Paletes</label><input id="f-qtd" type="number" min="1" value="1"></div>
+          <div><label>Peso Bruto total (kg)</label><input id="f-peso-bruto" type="number" step="0.1"></div>
+          <div><label>Peso Líquido total (kg)</label><input id="f-peso-liq" type="number" step="0.1"></div>
+          <div><label>Observação</label><input id="f-obs" placeholder="REMONTAR / PRIORIDADE"></div>
+          <div class="full">
+            <label>Dimensões por palete — Larg. x Prof. x Alt. (m)</label>
+            <div class="dims">
+              <input id="f-w" type="number" step="0.01" placeholder="0.85">
+              <input id="f-d" type="number" step="0.01" placeholder="1.10">
+              <input id="f-h" type="number" step="0.01" placeholder="1.85">
+            </div>
+            <div id="paletes-individuais-nota" style="font-size:10px;color:var(--dim);margin-top:4px;"></div>
+          </div>
+          <div class="full" id="paletes-individuais-wrap" style="display:none;">
+            <label>Ajustar palete por palete (romaneio individual)</label>
+            <div id="paletes-individuais-lista"></div>
+          </div>
+          <div class="full" style="display:flex;gap:8px;">
+            <button id="add-btn" type="button" style="flex:1;">+ Adicionar Pedido</button>
+            <button id="cancel-edit-btn" type="button" class="mini-btn hidden-btn">Cancelar edição</button>
+          </div>
+        </div>
+        <div id="pedidos-list"></div>
+      </div>
+
+      <div id="center-panel">
+        <div id="toolbar">
+          <button id="btn-montar" class="primary">▣ Montar Carga 3D</button>
+          <button id="btn-limpar">Limpar Carga</button>
+          <div class="divider"></div>
+          <label style="font-size:11px;color:var(--dim);display:flex;align-items:center;gap:5px;">
+            <input type="checkbox" id="chk-otimizar" checked style="width:auto;"> Otimizar arranjo (maior peça primeiro)
+          </label>
+          <label style="font-size:11px;color:var(--dim);display:flex;align-items:center;gap:5px;">
+            <input type="checkbox" id="chk-rotacao" checked style="width:auto;"> Girar paletes no eixo vertical
+          </label>
+          <div class="divider"></div>
+          <div class="view-presets">
+            <button data-view="persp">Perspectiva</button>
+            <button data-view="top">Topo</button>
+            <button data-view="side">Lateral</button>
+            <button data-view="rear">Traseira</button>
+          </div>
+          <div class="divider"></div>
+          <label style="font-size:11px;color:var(--dim);display:flex;align-items:center;gap:5px;">
+            <input type="checkbox" id="chk-rotulos" checked style="width:auto;"> 🏷 Mostrar rótulos nos paletes
+          </label>
+        </div>
+        <div id="toolbar2">
+          <div class="toolbar2-row">
+            <button id="btn-salvar-carga" title="Salvar todos os pedidos e configurações num arquivo .json — abre o seletor de pasta do sistema">💾 Salvar Carga</button>
+            <button id="btn-carregar-carga" title="Abrir um arquivo .json de carga salvo antes">📂 Carregar Carga</button>
+            <input type="file" id="load-file-input" accept=".json,application/json" style="display:none;">
+            <div class="divider"></div>
+            <button id="btn-exportar-conferencia" title="Gera o arquivo com a lista de IDs de paletes para o app de Conferência de Carregamento (coletor)">📦 Exportar p/ Conferência</button>
+            <button id="btn-enviar-nuvem" class="btn-multiline" title="Envia a carga direto para a nuvem — já aparece na Fila de todos os operadores, sem precisar transferir arquivo">
+              <span>☁️ Enviar para Nuvem</span>
+              <span id="fb-status"></span>
+            </button>
+            <div class="divider"></div>
+            <span title="Remontar palete baixo (≤1,41 m) em cima de outro">📐</span>
+            <select id="sel-palete-baixo" style="min-width:170px;flex:1;max-width:240px;"><option value="">Monte a carga primeiro</option></select>
+            <label style="font-size:11px;color:var(--dim);white-space:nowrap;">em cima de:</label>
+            <select id="sel-palete-destino" style="min-width:170px;flex:1;max-width:240px;"><option value="">Monte a carga primeiro</option></select>
+            <button id="btn-remontar" disabled>Remontar aqui</button>
+          </div>
+        </div>
+        <div id="canvas-wrap">
+          <div id="hint">arraste para girar/mover um palete · clique gira 90° · Shift+clique trava/destrava · botão direito move os lados · scroll para zoom</div>
+          <div id="dim-overlay"></div>
+        </div>
+        <div id="stats">
+          <div class="stat">
+            <div class="label">Peso</div>
+            <div class="value" id="stat-peso">0 / 0 kg</div>
+            <div class="bar"><div class="bar-fill" id="bar-peso" style="width:0%"></div></div>
+          </div>
+          <div class="stat">
+            <div class="label">Piso ocupado</div>
+            <div class="value" id="stat-vol">0%</div>
+            <div class="bar"><div class="bar-fill" id="bar-vol" style="width:0%"></div></div>
+          </div>
+          <div class="stat">
+            <div class="label">Paletes alocados</div>
+            <div class="value" id="stat-pallets">0 / 0</div>
+          </div>
+          <div id="legend"></div>
+          <div id="warn-area" style="flex-basis:100%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROMANEIO VIEW -->
+    <div id="view-romaneio">
+      <div id="print-actions">
+        <button id="btn-print">🖨 Imprimir Romaneio</button>
+      </div>
+      <div id="romaneio-sheet"></div>
+    </div>
+
+    <!-- ROTEIRO DE ENTREGA -->
+    <div id="view-roteiro">
+      <div class="hist-actions">
+        <div>
+          <h2 style="margin:0;font-size:16px;">🗺️ Roteiro de Entrega</h2>
+          <p class="modal-help" style="margin-top:4px;">
+            Sugestão de ordem de entrega baseada na cidade/UF de cada pedido e na ordem de
+            carregamento: quem foi carregado por último (mais perto da porta) tende a ser
+            entregue primeiro. Ajuste manualmente se conhecer melhor a rota real.
+          </p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button id="btn-roteiro-maps" class="mini-btn">🧭 Abrir rota no Google Maps</button>
+        </div>
+      </div>
+      <div id="roteiro-wrap"></div>
+    </div>
+
+    <!-- HISTÓRICO VIEW -->
+    <div id="view-historico">
+      <div class="hist-actions">
+        <div>
+          <h2 style="margin:0;font-size:16px;">Histórico de Cargas Salvas</h2>
+          <p class="modal-help" style="margin-top:4px;">
+            Registro local (neste navegador) de toda carga salva pelo botão "💾 Salvar Carga".
+            Cada arquivo .json continua na pasta de downloads; esta tabela é só um índice de
+            consulta rápida, não substitui os arquivos.
+          </p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button id="btn-hist-imprimir" class="mini-btn">🖨 Imprimir</button>
+          <button id="btn-hist-limpar" class="mini-btn" style="color:var(--red);">🗑 Limpar histórico</button>
+        </div>
+      </div>
+      <div id="hist-table-wrap"></div>
+    </div>
+  </div>
+</div>
+
+<div id="hist-detail-modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3 id="hist-detail-title">Detalhes da Carga</h3>
+    <div id="hist-detail-body" style="overflow:auto;max-height:60vh;background:#fff;color:#111;padding:16px;border-radius:6px;"></div>
+    <div class="modal-actions">
+      <span style="flex:1;"></span>
+      <button id="btn-hist-detail-close" class="primary">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div id="import-modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div id="import-step-text">
+      <h3>Colar pedidos do sistema</h3>
+      <p class="modal-help">
+        Cole o texto copiado do sistema. Dois formatos são reconhecidos automaticamente:
+        o bloco <code>Cliente:</code> / <code>Pedido:</code> / <code>Produto:</code> + tabela com IDs,
+        ou o relatório colunar "Montagem de carga" (Pedido, Seq., Cód. cliente, Item... com as
+        sub-linhas de paletes). Pode colar vários pedidos de uma vez. Na próxima tela você confere
+        e pode corrigir a quantidade de paletes antes de adicionar.
+      </p>
+      <textarea id="import-textarea" placeholder="Cliente: 1047 Camargo Companhia de Embalagens Ltda&#10;Pedido: 100213.6&#10;Produto: 130263 - CPP.HSF.920x0,033.TRAT.6.PAPEL.700MM&#10;ID   O.P.   Sequência Romaneio   Local   Peso Bruto Tot.   Tara Pallet   Peso Bruto Com.   Peso Tara Com.   Peso Líq. Com.   Qtde Com.   Vol.   Pallet"></textarea>
+      <div class="modal-actions">
+        <button id="btn-import-clear" class="ghost">🗑 Limpar</button>
+        <span style="flex:1;"></span>
+        <button id="btn-import-cancel">Cancelar</button>
+        <button id="btn-import-confirm" class="primary">Analisar Texto →</button>
+      </div>
+    </div>
+    <div id="import-step-review" class="hidden-btn">
+      <h3>Conferir antes de adicionar</h3>
+      <p class="modal-help">
+        Confira a quantidade de paletes e os pesos de cada pedido contra o documento original.
+        Pode corrigir qualquer campo aqui, ou remover uma linha com ✕, antes de adicionar à carga.
+      </p>
+      <div id="import-preview-wrap" style="overflow:auto;max-height:360px;border:1px solid var(--border);border-radius:6px;">
+        <table id="import-preview-table" class="preview-table"></table>
+      </div>
+      <div class="modal-actions">
+        <button id="btn-review-back" class="ghost">← Voltar</button>
+        <span style="flex:1;"></span>
+        <button id="btn-review-confirm" class="primary">Adicionar Pedidos</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- CONFIG ---------------- */
+  const COLORS = ["#f2a93b","#4fb8c4","#5cb87a","#c07be0","#e2574c","#6b9bd1","#d4c14a","#e08fb0","#7cc4a4","#b98650"];
+  const VEICULOS = {
+    "toco":          {comp:6.20, larg:2.40, alt:2.40, capac:6000},
+    "truck":         {comp:8.00, larg:2.45, alt:2.60, capac:8000},
+    "truck-sider":   {comp:8.00, larg:2.45, alt:2.80, capac:8000},
+    "carreta-sider": {comp:14.80, larg:2.48, alt:2.85, capac:27000},
+    "carreta-granel":{comp:14.00, larg:2.50, alt:2.60, capac:30000}
+  };
+
+  let pedidos = []; // {id,pedido,cliente,itemCod,itemDesc,qtd,pesoBruto,pesoLiq,w,d,h,obs,color}
+  let nextId = 1;
+  let lastPack = null; // {placed, unplaced, totals}
+
+  /* ---------------- DOM ---------------- */
+  const $ = (id)=>document.getElementById(id);
+  const tabMontagem = $("tab-montagem"), tabRomaneio = $("tab-romaneio"), tabHistorico = $("tab-historico"), tabRoteiro = $("tab-roteiro");
+  const viewMontagem = $("view-montagem"), viewRomaneio = $("view-romaneio"), viewHistorico = $("view-historico"), viewRoteiro = $("view-roteiro");
+
+  tabMontagem.onclick = ()=> switchTab("montagem");
+  tabRomaneio.onclick = ()=> switchTab("romaneio");
+  tabHistorico.onclick = ()=> switchTab("historico");
+  tabRoteiro.onclick = ()=> switchTab("roteiro");
+
+  function switchTab(which){
+    tabMontagem.classList.toggle("active", which==="montagem");
+    tabRomaneio.classList.toggle("active", which==="romaneio");
+    tabRoteiro.classList.toggle("active", which==="roteiro");
+    tabHistorico.classList.toggle("active", which==="historico");
+    viewMontagem.style.display = which==="montagem" ? "flex" : "none";
+    viewRomaneio.style.display = which==="romaneio" ? "block" : "none";
+    viewRoteiro.style.display = which==="roteiro" ? "block" : "none";
+    viewHistorico.style.display = which==="historico" ? "block" : "none";
+    if(which==="romaneio") renderRomaneio();
+    if(which==="roteiro") renderRoteiro();
+    if(which==="historico") renderHistorico();
+  }
+
+  $("veiculo-preset").onchange = (e)=>{
+    const v = e.target.value;
+    if(v==="custom") return;
+    const p = VEICULOS[v];
+    $("t-comp").value = p.comp.toFixed(2);
+    $("t-larg").value = p.larg.toFixed(2);
+    $("t-alt").value = p.alt.toFixed(2);
+    $("t-capac").value = p.capac;
+  };
+  ["t-comp","t-larg","t-alt","t-capac"].forEach(id=>{
+    $(id).addEventListener("input", ()=>{ $("veiculo-preset").value = "custom"; });
+  });
+
+  function getTruck(){
+    return {
+      comprimento: parseFloat($("t-comp").value)||8,
+      largura: parseFloat($("t-larg").value)||2.45,
+      altura: parseFloat($("t-alt").value)||2.6,
+      capacidadePeso: parseFloat($("t-capac").value)||8000
+    };
+  }
+
+  /* ---------------- PEDIDOS CRUD ---------------- */
+  let editingId = null;
+
+  const pedidoFormEl = $("pedido-form");
+  $("btn-toggle-form").onclick = ()=>{
+    const isHidden = pedidoFormEl.classList.contains("hidden-btn");
+    if(isHidden){
+      pedidoFormEl.classList.remove("hidden-btn");
+      $("btn-toggle-form").textContent = "✕ Fechar";
+      $("f-pedido").focus();
+    } else {
+      pedidoFormEl.classList.add("hidden-btn");
+      $("btn-toggle-form").textContent = "✎ Manual";
+      if(editingId) cancelEdit();
+    }
+  };
+  function openForm(){
+    pedidoFormEl.classList.remove("hidden-btn");
+    $("btn-toggle-form").textContent = "✕ Fechar";
+  }
+
+  $("add-btn").onclick = submitPedidoForm;
+  $("cancel-edit-btn").onclick = cancelEdit;
+
+  function readForm(){
+    return {
+      pedido: $("f-pedido").value.trim(),
+      seq: $("f-seq").value.trim(),
+      cliente: $("f-cliente").value.trim(),
+      cidade: $("f-cidade").value.trim(),
+      uf: $("f-uf").value.trim().toUpperCase(),
+      itemCod: $("f-item-cod").value.trim(),
+      itemDesc: $("f-desc").value.trim(),
+      qtd: Math.max(1, parseInt($("f-qtd").value)||1),
+      pesoBruto: parseFloat($("f-peso-bruto").value)||0,
+      pesoLiq: parseFloat($("f-peso-liq").value)||0,
+      w: parseFloat($("f-w").value)||0.85,
+      d: parseFloat($("f-d").value)||1.10,
+      h: parseFloat($("f-h").value)||1.20,
+      obs: $("f-obs").value.trim()
+    };
+  }
+
+  function fillForm(p){
+    $("f-pedido").value = p.pedido;
+    $("f-seq").value = p.seq || "";
+    $("f-item-cod").value = p.itemCod;
+    $("f-cliente").value = p.cliente;
+    $("f-cidade").value = p.cidade || "";
+    $("f-uf").value = p.uf || "";
+    $("f-desc").value = p.itemDesc;
+    $("f-qtd").value = p.qtd;
+    $("f-peso-bruto").value = p.pesoBruto || "";
+    $("f-peso-liq").value = p.pesoLiq || "";
+    $("f-obs").value = p.obs;
+    $("f-w").value = p.w;
+    $("f-d").value = p.d;
+    $("f-h").value = p.h;
+    renderPaletesIndividuaisForm(p);
+  }
+
+  // Quando o pedido tem o detalhamento por palete (vindo do relatório original), mostra
+  // uma linha por palete com seus próprios campos de largura/profundidade/altura — assim
+  // dá pra corrigir a dimensão de um palete específico sem mudar o pedido todo (útil
+  // quando um ou outro palete do pedido tem um tamanho diferente dos demais).
+  function renderPaletesIndividuaisForm(p){
+    const wrap = $("paletes-individuais-wrap");
+    const lista = $("paletes-individuais-lista");
+    const nota = $("paletes-individuais-nota");
+    const temDetalhe = p.paletesRomaneio && p.paletesRomaneio.length>0;
+    if(!temDetalhe){
+      wrap.style.display = "none";
+      nota.textContent = "";
+      return;
+    }
+    nota.textContent = "Esse valor acima é usado só como padrão — os paletes deste pedido têm dimensões próprias, ajustáveis abaixo.";
+    wrap.style.display = "block";
+    lista.innerHTML = p.paletesRomaneio.map((e,i)=>`
+      <div class="palete-individual-row">
+        <span class="pir-label">${e.romaneio!=null?'Rom.'+e.romaneio:'#'+(i+1)}${e.id?' · '+escapeHtml(e.id):''}</span>
+        <input type="number" step="0.01" class="pir-w" data-idx="${i}" value="${e.w!=null?e.w:p.w}" title="Largura (m)">
+        <span class="pir-x">×</span>
+        <input type="number" step="0.01" class="pir-d" data-idx="${i}" value="${e.d!=null?e.d:p.d}" title="Profundidade (m)">
+        <span class="pir-x">×</span>
+        <input type="number" step="0.01" class="pir-h" data-idx="${i}" value="${e.h!=null?e.h:p.h}" title="Altura (m)">
+      </div>
+    `).join("");
+  }
+
+  function clearForm(){
+    ["f-pedido","f-seq","f-item-cod","f-cliente","f-cidade","f-uf","f-desc","f-peso-bruto","f-peso-liq","f-obs","f-w","f-d","f-h"].forEach(id=>$(id).value="");
+    $("f-qtd").value = 1;
+    $("paletes-individuais-wrap").style.display = "none";
+    $("paletes-individuais-nota").textContent = "";
+  }
+
+  function submitPedidoForm(){
+    const data = readForm();
+    if(!data.pedido || !data.cliente){ alert("Informe ao menos o número do Pedido e o Cliente."); return; }
+
+    if(editingId){
+      const rec = pedidos.find(p=>p.id===editingId);
+      if(rec){
+        Object.assign(rec, data);
+        // Lê de volta as dimensões individuais que o usuário tenha ajustado por palete.
+        if(rec.paletesRomaneio && rec.paletesRomaneio.length>0){
+          document.querySelectorAll("#paletes-individuais-lista .pir-w").forEach(input=>{
+            const i = parseInt(input.dataset.idx);
+            const wEl = input;
+            const dEl = document.querySelector(`.pir-d[data-idx="${i}"]`);
+            const hEl = document.querySelector(`.pir-h[data-idx="${i}"]`);
+            if(rec.paletesRomaneio[i]){
+              rec.paletesRomaneio[i].w = parseFloat(wEl.value) || rec.paletesRomaneio[i].w;
+              rec.paletesRomaneio[i].d = parseFloat(dEl.value) || rec.paletesRomaneio[i].d;
+              rec.paletesRomaneio[i].h = parseFloat(hEl.value) || rec.paletesRomaneio[i].h;
+            }
+          });
+        }
+      }
+      cancelEdit();
+    } else {
+      const rec = Object.assign({id:nextId++, color: COLORS[(nextId-1)%COLORS.length]}, data);
+      pedidos.push(rec);
+      clearForm();
+      $("f-qtd").value = 1;
+    }
+    renderPedidosList();
+    $("f-pedido").focus();
+  }
+
+  function editPedido(id){
+    const p = pedidos.find(x=>x.id===id);
+    if(!p) return;
+    editingId = id;
+    fillForm(p);
+    openForm();
+    $("add-btn").textContent = "💾 Salvar Alterações";
+    $("cancel-edit-btn").classList.remove("hidden-btn");
+    renderPedidosList();
+    $("pedido-form").scrollIntoView({behavior:"smooth", block:"nearest"});
+    $("f-pedido").focus();
+  }
+  window.__editPedido = editPedido;
+
+  function cancelEdit(){
+    editingId = null;
+    clearForm();
+    $("add-btn").textContent = "+ Adicionar Pedido";
+    $("cancel-edit-btn").classList.add("hidden-btn");
+    renderPedidosList();
+  }
+
+  function removePedido(id){
+    pedidos = pedidos.filter(p=>p.id!==id);
+    if(id===editingId) cancelEdit();
+    renderPedidosList();
+  }
+  window.__removePedido = removePedido;
+
+  // Gira manualmente o palete deste pedido em torno do próprio eixo vertical
+  // (troca largura <-> profundidade). Não deita nem inverte o palete. Depois de
+  // girado manualmente, a orientação fica TRAVADA: a montagem automática não
+  // pode mais virar esse palete de volta, mesmo com "girar automaticamente" ligado.
+  function rotatePedidoManual(id){
+    const p = pedidos.find(x=>x.id===id);
+    if(!p) return;
+    const tmp = p.w; p.w = p.d; p.d = tmp;
+    p.travada = true;
+    renderPedidosList();
+  }
+  window.__rotatePedidoManual = rotatePedidoManual;
+
+  function destravarPedido(id){
+    const p = pedidos.find(x=>x.id===id);
+    if(!p) return;
+    p.travada = false;
+    renderPedidosList();
+  }
+  window.__destravarPedido = destravarPedido;
+
+  function renderPedidosList(){
+    const el = $("pedidos-list");
+    if(pedidos.length===0){
+      el.innerHTML = '<div id="empty-msg">Nenhum pedido adicionado ainda.<br>Preencha o formulário acima com os dados do sistema (Pedido, Cliente, Item, quantidade e dimensões dos paletes) e clique em Adicionar.</div>';
+      return;
+    }
+    el.innerHTML = pedidos.map(p=>{
+      const ordemEfetiva = (p.ordemManual!=null && p.ordemManual!=='') ? p.ordemManual : p.ordemCarga;
+      const badge = ordemEfetiva ? `<span class="ordem-badge${p.ordemManual!=null&&p.ordemManual!==''?' manual':''}">${ordemEfetiva}º a carregar${p.ordemManual!=null&&p.ordemManual!==''?' (manual)':''}</span>` : '';
+      return `
+      <div class="ped-card${p.id===editingId?' editing':''}" style="border-left-color:${p.color}">
+        <button class="rm" onclick="__removePedido(${p.id})" title="Excluir">✕</button>
+        <div class="row1">
+          <span class="pedido-num">#${escapeHtml(p.pedido)}${p.seq?` <span class="seq-tag">Seq ${escapeHtml(p.seq)}</span>`:''}</span>
+          ${badge}
+        </div>
+        <div class="cliente">${escapeHtml(p.cliente)}${p.cidade?` <span class="cidade-uf">— ${escapeHtml(p.cidade)}${p.uf?'/'+escapeHtml(p.uf):''}</span>`:''}</div>
+        <div class="item">${escapeHtml(p.itemCod)} ${p.itemCod&&p.itemDesc?'—':''} ${escapeHtml(p.itemDesc)}</div>
+        <div class="meta">
+          <span><b>${p.qtd}</b> pal.</span>
+          <span><b>${fmt(p.pesoBruto)}</b> kg bruto</span>
+          <span><b>${p.w.toFixed(2)}×${p.d.toFixed(2)}×${p.h.toFixed(2)}</b> m${p.travada?' 🔒':''}</span>
+        </div>
+        ${p.obs?`<div class="obs">${escapeHtml(p.obs)}</div>`:''}
+        <div class="ordem-manual-row">
+          <label>Ordem manual de carregamento:</label>
+          <input type="number" min="1" class="ordem-manual-input" value="${p.ordemManual??''}" placeholder="auto"
+            onchange="__setOrdemManual(${p.id}, this.value)" title="Força este pedido a ser o Nº informado na ordem de carregamento. Deixe em branco para calcular automaticamente. Monte a carga novamente para aplicar.">
+        </div>
+        <div class="card-actions">
+          <button onclick="__editPedido(${p.id})" title="Editar dados do pedido">✎ Editar</button>
+          <button onclick="__rotatePedidoManual(${p.id})" title="Girar palete no eixo vertical (troca largura ↔ profundidade). Trava a orientação para a montagem automática não desfazer.">↻ Girar palete</button>
+          ${p.travada?`<button onclick="__destravarPedido(${p.id})" title="Destravar orientação: deixa a montagem automática decidir de novo">🔓 Destravar</button>`:''}
+        </div>
+      </div>
+    `;}).join("");
+  }
+
+  function setOrdemManual(id, val){
+    const p = pedidos.find(x=>x.id===id);
+    if(!p) return;
+    const n = parseInt(val);
+    p.ordemManual = (val==="" || isNaN(n)) ? null : n;
+    renderPedidosList();
+  }
+  window.__setOrdemManual = setOrdemManual;
+
+  function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function fmt(n){ return (n||0).toLocaleString('pt-BR',{maximumFractionDigits:1}); }
+
+  /* ---------------- PDF.JS SETUP ---------------- */
+  if(window.pdfjsLib){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+  }
+
+  // Extrai o texto de um PDF reconstruindo a ordem de leitura (linha por linha, topo->baixo,
+  // esquerda->direita) a partir das coordenadas reais dos textos, página por página.
+  async function extractPdfText(file){
+    const buffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data: new Uint8Array(buffer)}).promise;
+    let fullText = "";
+    for(let p=1; p<=pdf.numPages; p++){
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      const lineMap = new Map();
+      content.items.forEach(it=>{
+        const y = Math.round(it.transform[5]);
+        if(!lineMap.has(y)) lineMap.set(y, []);
+        lineMap.get(y).push(it);
+      });
+      const sortedY = Array.from(lineMap.keys()).sort((a,b)=>b-a);
+      sortedY.forEach(y=>{
+        const lineItems = lineMap.get(y).slice().sort((a,b)=>a.transform[4]-b.transform[4]);
+        fullText += lineItems.map(it=>it.str).join(" ") + "\n";
+      });
+    }
+    return fullText;
+  }
+
+  function readTextFile(file){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = ()=> resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsText(file, "utf-8");
+    });
+  }
+
+  // Parser do relatório colunar "Montagem de carga" (Pedido / Seq. / Cód. cliente / Razão
+  // social / Cód. Item / Descrição ... seguido de sub-linhas de paletes, uma por palete real
+  // do tipo "N Pallets L x P x A (N Bobinas/Camadas)"). A quantidade de paletes e os pesos
+  // são somados diretamente das sub-linhas (mais confiável que as linhas de cabeçalho/total,
+  // que em alguns PDFs saem fora de ordem na extração de texto).
+  function parseRelatorioCarga(text){
+    const lines = text.split(/\r?\n/);
+    const headerRe = /^\s*(\d{5,7})\s+(\d{1,3})\s+(\d{1,6})\s+(.+?)\s+(\d{6})\s+(.+)$/;
+    const subrowRe = /(\d+)\s+Pallets?\s+([\d.,]+)\s*x\s*([\d.,]+)\s*x\s*([\d.,]+)\s*\((\d+)\s*(Bobinas?|Camadas?)\)/i;
+
+    const headers = [];
+    lines.forEach((line, idx)=>{
+      const m = line.match(headerRe);
+      if(m){
+        const restOfLine = m[6];
+        const descMatch = restOfLine.match(/^(.+?)\s+[\d.,]+\s*(KG|PC)\b/i);
+        const itemDesc = descMatch ? descMatch[1].trim() : restOfLine.trim();
+        // Depois da descrição, o relatório traz: peso, unidade, peso líq., O.P., UF (2
+        // letras maiúsculas) e Cidade — usados aqui só pra saber de onde é o cliente.
+        let uf = "", cidade = "";
+        const locMatch = restOfLine.match(/[\d.,]+\s*(?:KG|PC)\s+[\d.,]+\s+[\d.]+\s+([A-Z]{2})\s+(.+?)\s+\d+\s*$/i);
+        if(locMatch){ uf = locMatch[1].toUpperCase(); cidade = locMatch[2].trim(); }
+        headers.push({ idx, pedido:m[1], seq:m[2], clienteCod:m[3], clienteNome:m[4].trim(), itemCod:m[5], itemDesc, uf, cidade });
+      }
+    });
+
+    const results = [];
+    headers.forEach((h, hi)=>{
+      const startIdx = h.idx+1;
+      const endIdx = hi+1 < headers.length ? headers[hi+1].idx : lines.length;
+      const blockLines = lines.slice(startIdx, endIdx);
+
+      // IMPORTANTE: o número que aparece antes de "Pallets" (ex.: "2 Pallets ... (2 Bobinas)")
+      // é a quantidade de BOBINAS/rolos daquele palete (coluna "Vol."), não uma multiplicação
+      // de paletes. Cada linha reconhecida (cada ID/sequência) é SEMPRE exatamente 1 palete
+      // físico — a contagem de paletes é o número de linhas, não a soma desse número.
+      let qtdTotal=0, pesoBrutoTotal=0, pesoLiqTotal=0, dims=null, bobinas=null, unidade="bobinas", found=false;
+      // Totais adicionais do pedido para os demais campos do relatório original (além de
+      // Peso Bruto Tot. e Peso Líq. Com., que já eram somados acima).
+      let taraPalletTotal=0, pesoBrutoComTotal=0, pesoTaraComTotal=0, qtdeComTotal=0, bobinasTotal=0;
+      const paletesRomaneio = [];
+      blockLines.forEach(line=>{
+        const sm = line.match(subrowRe);
+        if(!sm) return;
+        found = true;
+        qtdTotal += 1; // 1 linha = 1 palete físico
+
+        const leading = line.slice(0, sm.index);
+        const leadingTrim = leading.trim();
+        const originalTokens = leadingTrim.split(/\s+/);
+        const numericTokens = originalTokens.filter(t=>/^\d+(,\d+)?$/.test(t));
+
+        // Os 6 campos de peso do relatório original, nesta ordem: Peso Bruto Tot., Tara
+        // Pallet, Peso Bruto Com., Peso Tara Com., Peso Líq. Com., Qtde Com.
+        let pesoBrutoLinha=0, taraPalletLinha=0, pesoBrutoComLinha=0, pesoTaraComLinha=0, pesoLiqLinha=0, qtdeComLinha=0;
+        if(numericTokens.length>=6){
+          const last6 = numericTokens.slice(-6);
+          pesoBrutoLinha = pnum(last6[0]);
+          taraPalletLinha = pnum(last6[1]);
+          pesoBrutoComLinha = pnum(last6[2]);
+          pesoTaraComLinha = pnum(last6[3]);
+          pesoLiqLinha = pnum(last6[4]);
+          qtdeComLinha = pnum(last6[5]);
+          pesoBrutoTotal += pesoBrutoLinha;
+          pesoLiqTotal += pesoLiqLinha;
+          taraPalletTotal += taraPalletLinha;
+          pesoBrutoComTotal += pesoBrutoComLinha;
+          pesoTaraComTotal += pesoTaraComLinha;
+          qtdeComTotal += qtdeComLinha;
+        }
+        // Quantidade de bobinas DESTE palete específico (cada linha pode ter uma quantidade
+        // diferente — ex.: paletes "extras"/parciais costumam ter menos bobinas que os cheios).
+        const bobinasLinha = sm[5];
+        const unidadeLinha = (sm[6]||"bobinas").toLowerCase();
+        bobinasTotal += parseInt(bobinasLinha)||0;
+        // Dimensões DESTE palete específico — um mesmo pedido pode ter paletes de tamanhos
+        // diferentes (ex.: alguns cheios de 1,46m de altura e outros parciais de 0,81m).
+        // Guarda a dimensão de cada linha individualmente; "dims" (usada como referência
+        // geral do pedido, ex. no resumo/formulário) fica com a da primeira linha encontrada.
+        const dimsLinha = {w:pnum(sm[2]), d:pnum(sm[3]), h:pnum(sm[4])};
+        if(!dims){
+          dims = dimsLinha;
+          bobinas = bobinasLinha;
+          unidade = unidadeLinha;
+        }
+        // O número da "Sequência Romaneio" é sempre o token numérico imediatamente antes
+        // do bloco dos 6 campos de peso — funciona tanto quando a linha traz só o número
+        // de sequência (formato simples) quanto quando traz ID + O.P. + sequência na frente
+        // (formato com ID de palete, ex.: "0201012026073011   140150222   1   605 70 535...").
+        let romaneioNum = null;
+        if(numericTokens.length>=7){
+          romaneioNum = parseInt(numericTokens[numericTokens.length-7]);
+        }
+        // O.P. (Prod./O.P.): quando presente, é o token logo antes da sequência.
+        let opStr = "";
+        if(numericTokens.length>=8){
+          opStr = numericTokens[numericTokens.length-8];
+        }
+        // O ID físico do palete (o número da etiqueta) é o PRIMEIRO token da linha quando
+        // existe — sempre um número longo (10+ dígitos), o que o distingue do O.P. (até 9
+        // dígitos) e da sequência (1-3 dígitos). Só existe nos relatórios que trazem essa
+        // coluna; quando ausente, fica null (sem conferência por ID possível para esse palete).
+        const primeiroToken = originalTokens[0];
+        const idPalete = primeiroToken && /^\d{10,}$/.test(primeiroToken) ? primeiroToken : null;
+
+        // Localização física do palete (coluna "Local", ex.: "A1.1", "Box 35..", "Porta do
+        // Meio.."): são os tokens NÃO numéricos que ficam entre a sequência e o início do
+        // bloco de peso. Mapeia a posição de cada token numérico no array original para achar
+        // exatamente onde esse trecho de texto começa e termina, mesmo com localização de
+        // mais de uma palavra.
+        let localStr = "";
+        if(numericTokens.length>=7){
+          const numericIdxInOriginal = [];
+          originalTokens.forEach((t,i)=>{ if(/^\d+(,\d+)?$/.test(t)) numericIdxInOriginal.push(i); });
+          const seqOriginalIdx = numericIdxInOriginal[numericTokens.length-7];
+          const pesoStartOriginalIdx = numericIdxInOriginal[numericTokens.length-6];
+          if(pesoStartOriginalIdx > seqOriginalIdx+1){
+            localStr = originalTokens.slice(seqOriginalIdx+1, pesoStartOriginalIdx).join(" ");
+          }
+        }
+        paletesRomaneio.push({
+          romaneio: romaneioNum, qtd: 1, id: idPalete, local: localStr, op: opStr,
+          pesoBruto: pesoBrutoLinha, taraPallet: taraPalletLinha, pesoBrutoCom: pesoBrutoComLinha,
+          pesoTaraCom: pesoTaraComLinha, pesoLiq: pesoLiqLinha, qtdeCom: qtdeComLinha,
+          bobinas: bobinasLinha, unidadeBobina: unidadeLinha,
+          w: dimsLinha.w, d: dimsLinha.d, h: dimsLinha.h
+        });
+      });
+      if(!found) return;
+
+      results.push({
+        pedido: h.pedido,
+        seq: h.seq,
+        cliente: h.clienteNome,
+        clienteCod: h.clienteCod,
+        uf: h.uf||"", cidade: h.cidade||"",
+        itemCod: h.itemCod,
+        itemDesc: h.itemDesc,
+        qtd: qtdTotal,
+        pesoBruto: Math.round(pesoBrutoTotal*100)/100,
+        pesoLiq: Math.round(pesoLiqTotal*100)/100,
+        taraPallet: Math.round(taraPalletTotal*100)/100,
+        pesoBrutoCom: Math.round(pesoBrutoComTotal*100)/100,
+        pesoTaraCom: Math.round(pesoTaraComTotal*100)/100,
+        qtdeCom: Math.round(qtdeComTotal*100)/100,
+        bobinasTotal,
+        w: dims?dims.w:0.85, d: dims?dims.d:1.10, h: dims?dims.h:1.20,
+        obs: bobinas ? `${bobinas} ${unidade}/palete` : "",
+        paletesRomaneio
+      });
+    });
+
+    return results;
+  }
+
+  // Tenta primeiro o relatório colunar "Montagem de carga"; se nada for reconhecido,
+  // cai para o formato "Cliente: / Pedido: / Produto:" colado do sistema.
+  function combinedParse(text){
+    const r1 = parseRelatorioCarga(text);
+    if(r1.length>0) return r1;
+    return parsePastedText(text);
+  }
+
+  /* ---------------- ANEXAR ARQUIVO ---------------- */
+  const fileInput = $("file-input");
+  $("btn-open-file").onclick = ()=> fileInput.click();
+  fileInput.onchange = async ()=>{
+    const file = fileInput.files[0];
+    fileInput.value = "";
+    if(!file) return;
+
+    const btn = $("btn-open-file");
+    const originalLabel = btn.textContent;
+    btn.textContent = "Lendo arquivo...";
+    btn.disabled = true;
+    try{
+      let text = "";
+      if(/\.pdf$/i.test(file.name)){
+        text = await extractPdfText(file);
+      } else {
+        text = await readTextFile(file);
+      }
+      const parsed = combinedParse(text);
+      importModal.classList.remove("hidden");
+      if(parsed.length===0){
+        alert("Não foi possível reconhecer pedidos automaticamente neste arquivo. Vou abrir o texto extraído na janela de colar para você conferir e importar manualmente.");
+        showImportTextStep();
+        $("import-textarea").value = text;
+        return;
+      }
+      showImportPreview(parsed);
+    } catch(err){
+      alert("Erro ao ler o arquivo: " + err.message);
+    } finally{
+      btn.textContent = originalLabel;
+      btn.disabled = false;
+    }
+  };
+
+  /* ---------------- IMPORTAR (COLAR DO SISTEMA) — com etapa de conferência ---------------- */
+  const importModal = $("import-modal");
+  let previewData = [];
+
+  function showImportTextStep(){
+    $("import-step-review").classList.add("hidden-btn");
+    $("import-step-text").classList.remove("hidden-btn");
+  }
+  function showImportPreview(parsed){
+    previewData = parsed;
+    renderPreviewTable();
+    $("import-step-text").classList.add("hidden-btn");
+    $("import-step-review").classList.remove("hidden-btn");
+  }
+  function previewRowHtml(it, i){
+    return `<tr data-idx="${i}">
+      <td><input class="pv-pedido" value="${escapeHtml(it.pedido)}"></td>
+      <td><input class="pv-seq" value="${escapeHtml(it.seq||'')}" style="width:40px;"></td>
+      <td><input class="pv-cliente" value="${escapeHtml(it.cliente)}"></td>
+      <td><input class="pv-item" value="${escapeHtml(it.itemCod)}"></td>
+      <td><input class="pv-desc" value="${escapeHtml(it.itemDesc)}"></td>
+      <td><input class="pv-qtd" type="number" min="1" value="${it.qtd}"></td>
+      <td><input class="pv-pb" type="number" step="0.01" value="${it.pesoBruto}"></td>
+      <td><input class="pv-pl" type="number" step="0.01" value="${it.pesoLiq}"></td>
+      <td><input class="pv-w" type="number" step="0.01" value="${it.w}"></td>
+      <td><input class="pv-d" type="number" step="0.01" value="${it.d}"></td>
+      <td><input class="pv-h" type="number" step="0.01" value="${it.h}"></td>
+      <td><input class="pv-obs" value="${escapeHtml(it.obs)}"></td>
+      <td><button class="pv-remove" title="Não importar esta linha">✕</button></td>
+    </tr>`;
+  }
+  function renderPreviewTable(){
+    // Renderiza a tabela UMA vez a partir dos dados; a partir daí, remover uma linha
+    // apaga só aquele <tr> do DOM (nunca redesenha a tabela toda), para não perder
+    // edições já feitas pelo usuário nas outras linhas.
+    const tbl = $("import-preview-table");
+    const rowsHtml = previewData.map((it,i)=> previewRowHtml(it,i)).join("");
+    tbl.innerHTML = `
+      <thead><tr>
+        <th>Pedido</th><th>Seq.</th><th>Cliente</th><th>Item</th><th>Descrição</th><th>Qtd. Pal.</th>
+        <th>P.Bruto (kg)</th><th>P.Líq (kg)</th><th>L (m)</th><th>P (m)</th><th>A (m)</th><th>Obs.</th><th></th>
+      </tr></thead>
+      <tbody>${rowsHtml || '<tr><td colspan="13" style="text-align:center;color:var(--dim);padding:12px;">Nenhuma linha reconhecida</td></tr>'}</tbody>
+    `;
+    tbl.querySelectorAll(".pv-remove").forEach(btn=>{
+      btn.onclick = ()=>{
+        const tr = btn.closest("tr");
+        if(tr) tr.remove();
+      };
+    });
+  }
+
+  $("btn-open-import").onclick = ()=>{
+    showImportTextStep();
+    importModal.classList.remove("hidden");
+  };
+  $("btn-import-cancel").onclick = ()=> importModal.classList.add("hidden");
+  $("btn-import-clear").onclick = ()=>{
+    $("import-textarea").value = "";
+    $("import-textarea").focus();
+  };
+  $("btn-import-confirm").onclick = ()=>{
+    const text = $("import-textarea").value;
+    const parsed = combinedParse(text);
+    if(parsed.length===0){
+      alert("Não foi possível reconhecer nenhum pedido no texto colado. Confira se o formato inclui as linhas \"Cliente:\", \"Pedido:\", \"Produto:\" e a tabela com os IDs (ou o relatório colunar \"Montagem de carga\").");
+      return;
+    }
+    showImportPreview(parsed);
+  };
+  $("btn-review-back").onclick = showImportTextStep;
+  $("btn-review-confirm").onclick = ()=>{
+    const rows = document.querySelectorAll("#import-preview-table tbody tr[data-idx]");
+    let count = 0;
+    rows.forEach(tr=>{
+      const val = (cls)=> tr.querySelector("."+cls).value;
+      const idx = parseInt(tr.dataset.idx);
+      const original = previewData[idx];
+      const rec = {
+        pedido: val("pv-pedido").trim(),
+        seq: val("pv-seq").trim(),
+        cliente: val("pv-cliente").trim(),
+        itemCod: val("pv-item").trim(),
+        itemDesc: val("pv-desc").trim(),
+        qtd: Math.max(1, parseInt(val("pv-qtd"))||1),
+        pesoBruto: parseFloat(val("pv-pb"))||0,
+        pesoLiq: parseFloat(val("pv-pl"))||0,
+        w: parseFloat(val("pv-w"))||0.85,
+        d: parseFloat(val("pv-d"))||1.10,
+        h: parseFloat(val("pv-h"))||1.20,
+        obs: val("pv-obs").trim(),
+        // Campos que não têm um input próprio na tela de conferência — vêm direto do que
+        // o parser já calculou (antes ficavam de fora e os totais saíam zerados no romaneio).
+        clienteCod: original ? original.clienteCod : undefined,
+        uf: original ? original.uf : undefined,
+        cidade: original ? original.cidade : undefined,
+        taraPallet: original ? original.taraPallet : undefined,
+        pesoBrutoCom: original ? original.pesoBrutoCom : undefined,
+        pesoTaraCom: original ? original.pesoTaraCom : undefined,
+        qtdeCom: original ? original.qtdeCom : undefined,
+        bobinasTotal: original ? original.bobinasTotal : undefined,
+        paletesRomaneio: original ? original.paletesRomaneio : undefined
+      };
+      if(!rec.pedido && !rec.cliente) return;
+      pedidos.push(Object.assign({id:nextId++, color: COLORS[(nextId-1)%COLORS.length]}, rec));
+      count++;
+    });
+    renderPedidosList();
+    $("import-textarea").value = "";
+    importModal.classList.add("hidden");
+    showImportTextStep();
+    alert(`${count} pedido(s) adicionado(s) com sucesso.`);
+  };
+
+  // Quebra um texto em segmentos sempre que uma linha bate com markerRegex; o texto da linha
+  // marcadora vira "header" do segmento e o restante até o próximo marcador vira "lines".
+  function splitByMarker(text, markerRegex){
+    const lines = text.split("\n");
+    const segments = [];
+    let current = null;
+    lines.forEach(line=>{
+      if(markerRegex.test(line)){
+        if(current) segments.push(current);
+        current = {header: line, lines: []};
+      } else if(current){
+        current.lines.push(line);
+      }
+    });
+    if(current) segments.push(current);
+    return segments;
+  }
+
+  function pnum(s){
+    if(s===undefined || s===null || s==="") return 0;
+    return parseFloat(String(s).replace(/\./g,"").replace(",",".")) || 0;
+  }
+
+  // Cada linha da tabela (ID, O.P., Sequência, Local, pesos..., Vol., Pallet) representa
+  // UM palete físico único (nunca é somado/agrupado com outra linha) — a quantidade de
+  // paletes do pedido é o total de linhas reconhecidas.
+  function parsePastedText(text){
+    const results = [];
+    if(!text || !text.trim()) return results;
+
+    const clienteSegs = splitByMarker(text, /^\s*Cliente\s*:/i);
+    const clientList = clienteSegs.length ? clienteSegs : [{header:"", lines:text.split("\n")}];
+
+    clientList.forEach(cSeg=>{
+      const cMatch = cSeg.header.match(/Cliente\s*:\s*(\d+)?\s*(.*)$/i);
+      const clienteCod = (cMatch && cMatch[1]) ? cMatch[1] : "";
+      const clienteNome = cMatch ? (cMatch[2]||"").trim() : "";
+      const bodyText = cSeg.lines.join("\n");
+
+      const pedidoSegs = splitByMarker(bodyText, /^\s*Pedido\s*:/i);
+      const pedidoList = pedidoSegs.length ? pedidoSegs : [{header:"", lines: bodyText.split("\n")}];
+
+      pedidoList.forEach(pSeg=>{
+        const pMatch = pSeg.header.match(/Pedido\s*:\s*([\w.\-\/]+)/i);
+        const pedidoNum = pMatch ? pMatch[1].trim() : "";
+        const pBodyText = pSeg.lines.join("\n");
+
+        const produtoSegs = splitByMarker(pBodyText, /^\s*Produto\s*:/i);
+        const produtoList = produtoSegs.length ? produtoSegs : [{header:"", lines: pBodyText.split("\n")}];
+
+        produtoList.forEach(prSeg=>{
+          const prMatch = prSeg.header.match(/Produto\s*:\s*(\S+)\s*-\s*(.*)$/i);
+          const itemCod = prMatch ? prMatch[1].trim() : "";
+          const itemDesc = prMatch ? prMatch[2].trim() : "";
+
+          const rows = [];
+          prSeg.lines.forEach(line=>{
+            const parts = line.split("\t").map(s=>s.trim());
+            if(parts.length>=9 && /^\d{6,}/.test(parts[0])){
+              rows.push(parts);
+            }
+          });
+          if(rows.length===0) return;
+
+          let pesoBrutoTotal=0, pesoLiqTotal=0, dims=null, bobinas=null;
+          let taraPalletTotal=0, pesoBrutoComTotal=0, pesoTaraComTotal=0, qtdeComTotal=0, bobinasTotal=0;
+          const paletesRomaneio = [];
+          rows.forEach(r=>{
+            const pesoBrutoLinha = pnum(r[4]);
+            const taraPalletLinha = pnum(r[5]);
+            const pesoBrutoComLinha = pnum(r[6]);
+            const pesoTaraComLinha = pnum(r[7]);
+            const pesoLiqLinha = pnum(r[8]);
+            const qtdeComLinha = pnum(r[9]);
+            pesoBrutoTotal += pesoBrutoLinha;
+            pesoLiqTotal += pesoLiqLinha;
+            taraPalletTotal += taraPalletLinha;
+            pesoBrutoComTotal += pesoBrutoComLinha;
+            pesoTaraComTotal += pesoTaraComLinha;
+            qtdeComTotal += qtdeComLinha;
+            const txt = (r[11]||"") + " " + (r[10]||"");
+            const dm = txt.match(/(\d+,\d+)\s*x\s*(\d+,\d+)\s*x\s*(\d+,\d+)/);
+            const dimsLinha = dm ? {w:pnum(dm[1]), d:pnum(dm[2]), h:pnum(dm[3])} : null;
+            if(dimsLinha && !dims) dims = dimsLinha;
+            const bm = txt.match(/\((\d+)\s*Bobinas?\)/i);
+            const bobinasLinha = bm ? bm[1] : null;
+            if(bobinasLinha && !bobinas) bobinas = bobinasLinha;
+            bobinasTotal += parseInt(bobinasLinha)||0;
+            // r[2] = "Sequência Romaneio": o número do romaneio daquele palete específico.
+            // r[0] = "ID": o número físico impresso na etiqueta do palete.
+            // r[3] = "Local": endereço/localização física do palete no estoque.
+            // Cada linha aqui já representa 1 palete físico — inclusive suas próprias
+            // dimensões, que podem diferir de outras linhas do mesmo pedido.
+            const romaneioNum = /^\d+$/.test(r[2]) ? parseInt(r[2]) : null;
+            const idPalete = /^\d{6,}$/.test(r[0]) ? r[0] : null;
+            const localStr = (r[3]||"").trim();
+            const opStr = (r[1]||"").trim();
+            paletesRomaneio.push({
+              romaneio: romaneioNum, qtd: 1, id: idPalete, local: localStr, op: opStr,
+              pesoBruto: pesoBrutoLinha, taraPallet: taraPalletLinha, pesoBrutoCom: pesoBrutoComLinha,
+              pesoTaraCom: pesoTaraComLinha, pesoLiq: pesoLiqLinha, qtdeCom: qtdeComLinha,
+              bobinas: bobinasLinha, unidadeBobina: "bobinas",
+              w: dimsLinha?dimsLinha.w:undefined, d: dimsLinha?dimsLinha.d:undefined, h: dimsLinha?dimsLinha.h:undefined
+            });
+          });
+
+          if(!pedidoNum && !itemCod) return;
+
+          results.push({
+            pedido: pedidoNum,
+            cliente: clienteNome || clienteCod || "(cliente não identificado)",
+            clienteCod: clienteCod,
+            itemCod, itemDesc,
+            qtd: rows.length,
+            pesoBruto: pesoBrutoTotal,
+            pesoLiq: pesoLiqTotal,
+            taraPallet: Math.round(taraPalletTotal*100)/100,
+            pesoBrutoCom: Math.round(pesoBrutoComTotal*100)/100,
+            pesoTaraCom: Math.round(pesoTaraComTotal*100)/100,
+            qtdeCom: Math.round(qtdeComTotal*100)/100,
+            bobinasTotal,
+            w: dims ? dims.w : 0.85,
+            d: dims ? dims.d : 1.10,
+            h: dims ? dims.h : 1.85,
+            obs: bobinas ? `${bobinas} bobinas/palete` : "",
+            paletesRomaneio
+          });
+        });
+      });
+    });
+
+    return results;
+  }
+
+  /* ---------------- PACKING ---------------- */
+  // Sempre que o pedido tiver o detalhamento por romaneio (número de cada palete no
+  // romaneio original, ex.: 1, 2, 3...), cada palete expandido carrega esse número —
+  // ele acompanha o pedido em qualquer lugar que mostre informação por palete (rótulo
+  // 3D, checklist de impressão, seletor de giro individual). Se o usuário editar a
+  // quantidade manualmente e o detalhamento ficar inconsistente, cai no modo genérico
+  // (sem número de romaneio) em vez de mostrar números errados.
+  function expandUnits(){
+    const units = [];
+    let uidCounter = 0;
+    const novoUid = ()=> "u_" + (uidCounter++) + "_" + Math.random().toString(36).slice(2,7);
+    pedidos.forEach(p=>{
+      const pesoUnit = p.qtd>0 ? p.pesoBruto/p.qtd : 0;
+      const pesoLiqUnit = p.qtd>0 ? (p.pesoLiq||0)/p.qtd : 0;
+      const ordemManual = (p.ordemManual!=null && p.ordemManual!=='') ? p.ordemManual : null;
+      const somaDetalhe = (p.paletesRomaneio||[]).reduce((s,e)=>s+e.qtd,0);
+      const usarDetalhe = p.paletesRomaneio && p.paletesRomaneio.length>0 && somaDetalhe===p.qtd;
+      if(usarDetalhe){
+        p.paletesRomaneio.forEach((entry, idxEntry)=>{
+          for(let i=0;i<entry.qtd;i++){
+            // Usa o peso REAL daquele palete específico quando o relatório trouxe essa
+            // informação linha a linha; só cai para a média do pedido se não tiver o dado.
+            const pesoBrutoReal = (entry.pesoBruto!=null && entry.pesoBruto>0) ? entry.pesoBruto : pesoUnit;
+            const pesoLiqReal = (entry.pesoLiq!=null && entry.pesoLiq>0) ? entry.pesoLiq : pesoLiqUnit;
+            // Usa a dimensão REAL daquele palete específico — um mesmo pedido pode ter
+            // paletes de tamanhos diferentes (ex.: cheios e parciais/"REMONTAR"); só cai
+            // para a dimensão padrão do pedido se a linha não trouxer a própria medida.
+            const wReal = (entry.w!=null && entry.w>0) ? entry.w : p.w;
+            const dReal = (entry.d!=null && entry.d>0) ? entry.d : p.d;
+            const hReal = (entry.h!=null && entry.h>0) ? entry.h : p.h;
+            units.push({uid:novoUid(), pedidoId:p.id, origemIdx:idxEntry, pedido:p.pedido, seq:p.seq, romaneio:entry.romaneio, idPalete:entry.id||null, local:entry.local||"",
+              cliente:p.cliente, w:wReal, d:dReal, h:hReal,
+              peso:pesoBrutoReal, pesoLiq:pesoLiqReal,
+              bobinas: entry.bobinas||null, unidadeBobina: entry.unidadeBobina||"bobinas",
+              color:p.color, obs:p.obs, travada: !!p.travada, ordemManual});
+          }
+        });
+        return;
+      }
+      for(let i=0;i<p.qtd;i++){
+        units.push({uid:novoUid(), pedidoId:p.id, origemIdx:i, pedido:p.pedido, seq:p.seq, romaneio:null, idPalete:null, local:"",
+          cliente:p.cliente, w:p.w, d:p.d, h:p.h,
+          peso:pesoUnit, pesoLiq:pesoLiqUnit, bobinas:null, unidadeBobina:"bobinas",
+          color:p.color, obs:p.obs, travada: !!p.travada, ordemManual});
+      }
+    });
+    return units;
+  }
+
+  // Empacotamento 2D no piso do caminhão — SEM empilhar paletes (um nunca fica sobre o
+  // outro). Cada palete é indivisível e nunca é fundido com outro. A única rotação
+  // permitida é em torno do próprio eixo vertical (troca largura <-> profundidade); a
+  // altura declarada nunca muda de eixo (o palete nunca é deitado nem invertido).
+  //
+  // Estratégia "cantos livres" (bottom-left fill): a cada palete novo, testa encaixar nos
+  // cantos livres já conhecidos (começando pelo mais perto da cabine/parede), testando a
+  // sobreposição real contra TODOS os paletes já colocados antes de aceitar a posição —
+  // isso garante, por construção, que nunca sobra vão desnecessário nem acontece
+  // sobreposição, mesmo com paletes de tamanhos bem diferentes misturados na mesma carga.
+  //
+  // "fixos" são paletes que já têm posição definida e NÃO devem se mover (usado tanto na
+  // montagem do zero — lista vazia — quanto no empacotamento incremental/com bloqueios,
+  // onde entram os paletes que precisam continuar exatamente onde estavam).
+  function empacotarComCantos(fixos, itens, truck, otimizar, permitirRotacao){
+    const TL = truck.comprimento, TW = truck.largura, TH = truck.altura;
+    const eps = 1e-6;
+
+    const ocupados = fixos.filter(u=>Math.abs(u.y)<eps).map(u=>({x:u.x, z:u.z, d:u.d, w:u.w}));
+
+    function seSobrepoe2D(a, b){
+      return a.x < b.x+b.d-eps && b.x < a.x+a.d-eps && a.z < b.z+b.w-eps && b.z < a.z+a.w-eps;
+    }
+    function cabeAqui(cand){
+      if(cand.x < -eps || cand.z < -eps) return false;
+      if(cand.x+cand.d > TL+eps || cand.z+cand.w > TW+eps) return false;
+      return !ocupados.some(r=> seSobrepoe2D(cand, r));
+    }
+
+    // Cantos candidatos: origem + canto direito e canto de cima de cada palete já ocupado.
+    let candidatos = [{x:0, z:0}];
+    ocupados.forEach(r=>{
+      candidatos.push({x:r.x+r.d, z:r.z});
+      candidatos.push({x:r.x, z:r.z+r.w});
+    });
+
+    let list = itens.slice();
+    list.sort((a,b)=>{
+      const ma = (a.ordemManual!=null) ? a.ordemManual : Infinity;
+      const mb = (b.ordemManual!=null) ? b.ordemManual : Infinity;
+      if(ma !== mb) return ma - mb;
+      // Paletes que já existiam numa montagem anterior mantêm sua ordem relativa (quem
+      // estava mais na frente continua sendo processado primeiro), mas SEMPRE são
+      // compactados de novo — nunca deixando vão entre eles, mesmo que tenham sido
+      // arrastados manualmente antes.
+      const ra = (a.prioridadeReordenacao!=null) ? a.prioridadeReordenacao : Infinity;
+      const rb = (b.prioridadeReordenacao!=null) ? b.prioridadeReordenacao : Infinity;
+      if(ra !== rb) return ra - rb;
+      if(otimizar){
+        const areaA = a.d*a.w, areaB = b.d*b.w;
+        if(Math.abs(areaA-areaB) > eps) return areaB - areaA; // maior área de piso primeiro
+        if(Math.abs(a.d-b.d) > eps) return a.d - b.d;
+        return a.w - b.w;
+      }
+      return 0;
+    });
+
+    const colocados = [];
+    const unplaced = [];
+
+    list.forEach(u=>{
+      if(u.h > TH + eps){ unplaced.push(u); return; }
+      const orientations = (permitirRotacao && !u.travada && Math.abs(u.w-u.d)>eps)
+        ? [{w:u.w,d:u.d},{w:u.d,d:u.w}]
+        : [{w:u.w,d:u.d}];
+
+      // Testa os cantos mais perto da cabine/parede primeiro (x menor, depois z menor) —
+      // isso é o que faz a carga ficar compacta, sempre grudando no que já tem em vez de
+      // deixar vão vazio antes de um palete.
+      candidatos.sort((a,b)=> (a.x-b.x) || (a.z-b.z));
+
+      let escolhido = null;
+      for(const c of candidatos){
+        for(const o of orientations){
+          const cand = {x:c.x, z:c.z, d:o.d, w:o.w};
+          if(cabeAqui(cand)){ escolhido = {pos:c, orient:o}; break; }
+        }
+        if(escolhido) break;
+      }
+
+      if(escolhido){
+        const item = {...u, w:escolhido.orient.w, d:escolhido.orient.d, x:escolhido.pos.x, y:0, z:escolhido.pos.z};
+        colocados.push(item);
+        ocupados.push({x:item.x, z:item.z, d:item.d, w:item.w});
+        candidatos.push({x:item.x+item.d, z:item.z});
+        candidatos.push({x:item.x, z:item.z+item.w});
+        return;
+      }
+      unplaced.push(u);
+    });
+
+    return { placed: colocados, unplaced };
+  }
+
+  function montarTotais(units, truck, placed){
+    const pesoTotal = units.reduce((s,u)=>s+u.peso,0);
+    const areaTruck = truck.comprimento*truck.largura;
+    const areaOcupada = placed.reduce((s,u)=>s+u.w*u.d,0);
+    return { pesoTotal, areaTruck, areaOcupada, capacidadePeso: truck.capacidadePeso };
+  }
+
+  // Monta a carga do zero — usada na primeira montagem (sem nada fixo ainda).
+  function packTruck(units, truck, otimizar, permitirRotacao){
+    const resultado = empacotarComCantos([], units, truck, otimizar, permitirRotacao);
+    return { placed: resultado.placed, unplaced: resultado.unplaced, totals: montarTotais(units, truck, resultado.placed) };
+  }
+
+  // Empacotamento incremental: usado quando já existe uma carga montada com o MESMO
+  // caminhão. Mantém os paletes que já estavam posicionados exatamente onde estavam
+  // (mesma posição, mesma orientação, remontagens preservadas) e só encaixa os paletes
+  // NOVOS no espaço que sobrou — em vez de reorganizar a carga inteira do zero.
+  // Confere se a dimensão do palete "fresco" (recalculado agora, refletindo qualquer
+  // edição/giro feito no pedido) ainda bate com a dimensão que ele tinha na montagem
+  // anterior — exatamente igual, ou trocada 90° (já que a montagem automática pode ter
+  // escolhido qualquer uma das duas orientações). Se NÃO bater de jeito nenhum, é sinal
+  // de que o usuário editou ou girou o palete desde a última montagem — nesse caso ele
+  // precisa ser reposicionado do zero, não mantido "preso" nas dimensões antigas.
+  function dimsCompativeis(u, antigo){
+    const eps = 1e-6;
+    const igual = Math.abs(u.w-antigo.w)<eps && Math.abs(u.d-antigo.d)<eps;
+    // Travado significa que o usuário forçou esta orientação exata (girou manualmente) —
+    // nesse caso não aceita uma troca de w/d como "compatível", senão a mudança nunca
+    // seria aplicada numa remontagem seguinte.
+    if(u.travada) return igual;
+    const trocado = Math.abs(u.w-antigo.d)<eps && Math.abs(u.d-antigo.w)<eps;
+    return igual || trocado;
+  }
+
+  function packTruckIncremental(units, truck, otimizar, permitirRotacao){
+    const eps = 1e-6;
+    const existentesPorChave = new Map();
+    (lastPack.placed||[]).forEach(u=> existentesPorChave.set(chaveEstavelPalete(u), u));
+
+    // Ordem relativa já estabelecida entre os paletes que estavam no CHÃO antes (não
+    // travados, não empilhados) — usada só pra decidir QUEM processa primeiro durante a
+    // recompactação, não pra travar a posição exata de ninguém.
+    const existentesNoChaoOrdenados = (lastPack.placed||[])
+      .filter(u=>Math.abs(u.y)<eps && u.empilhadoSobre==null && !u.bloqueado)
+      .slice().sort((a,b)=> (a.x-b.x) || (a.z-b.z));
+    const rankPorChave = new Map();
+    existentesNoChaoOrdenados.forEach((u,idx)=> rankPorChave.set(chaveEstavelPalete(u), idx));
+
+    const fixosTravados = [];
+    const empilhadosFixos = [];
+    const paraEmpacotar = [];
+
+    units.forEach(u=>{
+      const antigo = existentesPorChave.get(chaveEstavelPalete(u));
+      if(antigo && antigo.empilhadoSobre!=null){
+        // Paletes remontados (empilhados em cima de outro) não ocupam piso — continuam
+        // fixos e são reposicionados depois pela lógica de remontagem.
+        empilhadosFixos.push(Object.assign({}, u, {
+          x:antigo.x, y:antigo.y, z:antigo.z, w:antigo.w, d:antigo.d,
+          empilhadoSobre:antigo.empilhadoSobre, uid:antigo.uid
+        }));
+        return;
+      }
+      if(antigo && antigo.bloqueado && dimsCompativeis(u, antigo)){
+        // Travado com cadeado: posição absolutamente fixa, não participa da compactação.
+        fixosTravados.push(Object.assign({}, u, {
+          x:antigo.x, y:antigo.y, z:antigo.z, w:antigo.w, d:antigo.d,
+          empilhadoSobre:antigo.empilhadoSobre, uid:antigo.uid, bloqueado:true
+        }));
+        return;
+      }
+      const rank = antigo ? rankPorChave.get(chaveEstavelPalete(u)) : undefined;
+      paraEmpacotar.push(Object.assign({}, u, {
+        prioridadeReordenacao: (rank!=null) ? rank : Infinity
+      }));
+    });
+
+    const resultado = empacotarComCantos(fixosTravados, paraEmpacotar, truck, otimizar, permitirRotacao);
+    const placed = fixosTravados.concat(resultado.placed).concat(empilhadosFixos);
+
+    return { placed, unplaced: resultado.unplaced, totals: montarTotais(units, truck, placed) };
+  }
+
+  // Usado quando o tamanho do caminhão MUDOU desde a última montagem: mesmo assim, os
+  // paletes que estão TRAVADOS (cadeado) continuam exatamente na posição de antes — só
+  // os demais (destravados + novos) são reorganizados e compactados para caber no
+  // caminhão novo, sempre grudados uns nos outros sem vão. Se um palete travado não
+  // couber mais no caminhão novo (ex.: encolheu demais), ele é destravado
+  // automaticamente e avisa, em vez de travar o processo.
+  function packTruckRespeitandoBloqueios(units, truck, otimizar, permitirRotacao){
+    const TL = truck.comprimento, TW = truck.largura, TH = truck.altura;
+    const eps = 1e-6;
+
+    const existentesPorChave = new Map();
+    (lastPack.placed||[]).forEach(u=> existentesPorChave.set(chaveEstavelPalete(u), u));
+
+    const existentesNoChaoOrdenados = (lastPack.placed||[])
+      .filter(u=>Math.abs(u.y)<eps && u.empilhadoSobre==null && !u.bloqueado)
+      .slice().sort((a,b)=> (a.x-b.x) || (a.z-b.z));
+    const rankPorChave = new Map();
+    existentesNoChaoOrdenados.forEach((u,idx)=> rankPorChave.set(chaveEstavelPalete(u), idx));
+
+    let algumDestravadoAutomaticamente = false;
+    const fixosTravados = [];
+    const empilhadosFixos = [];
+    const paraEmpacotar = [];
+
+    units.forEach(u=>{
+      const antigo = existentesPorChave.get(chaveEstavelPalete(u));
+      if(antigo && antigo.empilhadoSobre!=null){
+        empilhadosFixos.push(Object.assign({}, u, {
+          x:antigo.x, y:antigo.y, z:antigo.z, w:antigo.w, d:antigo.d,
+          empilhadoSobre:antigo.empilhadoSobre, uid:antigo.uid
+        }));
+        return;
+      }
+      if(antigo && antigo.bloqueado && dimsCompativeis(u, antigo)){
+        const cabeAindaNoChao = antigo.x+antigo.d <= TL+eps && antigo.z+antigo.w <= TW+eps && antigo.y+antigo.h <= TH+eps;
+        if(cabeAindaNoChao){
+          fixosTravados.push(Object.assign({}, u, {
+            x:antigo.x, y:antigo.y, z:antigo.z, w:antigo.w, d:antigo.d,
+            empilhadoSobre:antigo.empilhadoSobre, uid:antigo.uid, bloqueado:true
+          }));
+          return;
+        }
+        algumDestravadoAutomaticamente = true;
+        bloqueiosSalvos.delete(chaveEstavelPalete(u));
+      }
+      const rank = antigo ? rankPorChave.get(chaveEstavelPalete(u)) : undefined;
+      paraEmpacotar.push(Object.assign({}, u, {
+        bloqueado:false, prioridadeReordenacao: (rank!=null) ? rank : Infinity
+      }));
+    });
+
+    if(algumDestravadoAutomaticamente){
+      alert("Alguns paletes travados não cabiam mais no caminhão com o novo tamanho e foram destravados automaticamente para poderem ser reposicionados.");
+    }
+
+    const resultado = empacotarComCantos(fixosTravados, paraEmpacotar, truck, otimizar, permitirRotacao);
+    const placed = fixosTravados.concat(resultado.placed).concat(empilhadosFixos);
+
+    return { placed, unplaced: resultado.unplaced, totals: montarTotais(units, truck, placed) };
+  }
+
+
+  /* ---------------- THREE.JS SCENE ---------------- */
+  let scene, camera, renderer, rig, palletGroup, truckWire, canvasWrap, gridChao;
+  let modoImpressaoRotulos = false; // true durante a captura pra impressão: texto preto legível no papel branco
+  let rotY = 0.6, rotX = -0.32, camDist = 8.5;
+  let panX = 0, panY = 0; // deslocamento lateral/vertical do ponto para onde a câmera olha
+  let dragging=false, panning=false, lastPX=0, lastPY=0;
+  let arrastandoPalete = null; // referência ao palete (unidade de lastPack.placed) sendo arrastado
+  let pointerDownX=0, pointerDownY=0, pointerDownTime=0;
+  const raycaster = new THREE.Raycaster();
+  const mouseNDC = new THREE.Vector2();
+
+  function initScene(){
+    canvasWrap = $("canvas-wrap");
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(45, canvasWrap.clientWidth/canvasWrap.clientHeight, 0.1, 200);
+    renderer = new THREE.WebGLRenderer({antialias:true, alpha:true, preserveDrawingBuffer:true});
+    renderer.setPixelRatio(window.devicePixelRatio||1);
+    resizeRenderer();
+    canvasWrap.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+    const dl = new THREE.DirectionalLight(0xffffff, 0.75);
+    dl.position.set(6,10,8);
+    scene.add(dl);
+    const dl2 = new THREE.DirectionalLight(0x88aaff, 0.25);
+    dl2.position.set(-6,4,-8);
+    scene.add(dl2);
+
+    rig = new THREE.Group();
+    scene.add(rig);
+    palletGroup = new THREE.Group();
+    rig.add(palletGroup);
+
+    const gridHelper = new THREE.GridHelper(40, 40, 0x2a3140, 0x1c222c);
+    scene.add(gridHelper);
+    gridChao = gridHelper;
+
+    updateCamera();
+    animate();
+
+    // Arraste com botão esquerdo gira a câmera (como antes); com botão direito, move a
+    // imagem para os lados (pan) — assim dá pra olhar pontas específicas da carga sem
+    // ficar preso girando sempre em torno do centro.
+    renderer.domElement.addEventListener("pointerdown", e=>{
+      pointerDownX = e.clientX; pointerDownY = e.clientY; pointerDownTime = Date.now();
+      if(e.button===2){ panning=true; lastPX=e.clientX; lastPY=e.clientY; return; }
+
+      // Antes de girar a câmera, verifica se o clique caiu em cima de um palete — se sim,
+      // entra em modo de arrastar/girar aquele palete específico em vez de orbitar a vista.
+      if(e.button===0 && lastPack && lastPack.placed && lastPack.placed.length>0){
+        const paleteClicado = paletePorRaycast(e);
+        if(paleteClicado){
+          // Shift+clique alterna o cadeado (trava/destrava), sem arrastar nem girar.
+          if(e.shiftKey){
+            alternarBloqueioPalete(paleteClicado);
+            return;
+          }
+          // Palete travado não pode ser arrastado nem girado até ser destravado.
+          if(paleteClicado.bloqueado){
+            mostrarFeedback3D("🔒 Este palete está travado — Shift+clique para destravar.");
+            return;
+          }
+          arrastandoPalete = paleteClicado;
+          lastPX=e.clientX; lastPY=e.clientY;
+          return;
+        }
+      }
+      dragging=true; lastPX=e.clientX; lastPY=e.clientY;
+    });
+    window.addEventListener("pointerup", e=>{
+      if(arrastandoPalete){
+        const moveu = Math.abs(e.clientX-pointerDownX) > 4 || Math.abs(e.clientY-pointerDownY) > 4;
+        if(!moveu){
+          girarPaleteNoClique(arrastandoPalete);
+        } else {
+          finalizarArrastePalete();
+        }
+        arrastandoPalete = null;
+      }
+      dragging=false; panning=false;
+    });
+    canvasWrap.addEventListener("contextmenu", e=>e.preventDefault());
+    window.addEventListener("pointermove", e=>{
+      if(arrastandoPalete){ moverPaleteArrastado(e); return; }
+      if(!dragging && !panning) return;
+      const dx = e.clientX-lastPX, dy = e.clientY-lastPY;
+      if(dragging){
+        rotY += dx*0.008;
+        rotX = Math.max(-1.3, Math.min(0.1, rotX + dy*0.006));
+      } else if(panning){
+        const fator = camDist*0.0018;
+        panX -= dx*fator;
+        panY += dy*fator;
+      }
+      lastPX=e.clientX; lastPY=e.clientY;
+      updateCamera();
+    });
+    canvasWrap.addEventListener("wheel", e=>{
+      e.preventDefault();
+      camDist = Math.max(2, Math.min(40, camDist + e.deltaY*0.01));
+      updateCamera();
+    }, {passive:false});
+
+    window.addEventListener("resize", resizeRenderer);
+  }
+
+  function resizeRenderer(){
+    if(!renderer||!canvasWrap) return;
+    const w = canvasWrap.clientWidth, h = canvasWrap.clientHeight;
+    renderer.setSize(w,h);
+    if(camera){ camera.aspect = w/h; camera.updateProjectionMatrix(); }
+  }
+
+  function updateCamera(){
+    const cx = camDist*Math.sin(rotY)*Math.cos(rotX);
+    const cy = camDist*Math.sin(-rotX)+2.2;
+    const cz = camDist*Math.cos(rotY)*Math.cos(rotX);
+
+    // Desloca tanto a câmera quanto o ponto olhado na direção "direita/cima" da própria
+    // câmera (não nos eixos fixos do mundo), pra o pan sempre mover a imagem pro lado que
+    // o usuário arrasta, não importa o ângulo de rotação atual.
+    const lookAtBase = new THREE.Vector3(0,1.2,0);
+    const eye = new THREE.Vector3(cx,cy,cz);
+    const forward = lookAtBase.clone().sub(eye).normalize();
+    const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0,1,0)).normalize();
+    const up = new THREE.Vector3().crossVectors(right, forward).normalize();
+    const pan = right.clone().multiplyScalar(panX).add(up.clone().multiplyScalar(panY));
+
+    camera.position.copy(eye.clone().add(pan));
+    camera.lookAt(lookAtBase.clone().add(pan));
+  }
+
+  function setPreset(v){
+    if(v==="persp"){ rotY=0.6; rotX=-0.32; camDist=Math.max(camDist,7); }
+    if(v==="top"){ rotY=0.001; rotX=-1.55; }
+    if(v==="side"){ rotY=Math.PI/2; rotX=-0.05; }
+    if(v==="rear"){ rotY=Math.PI; rotX=-0.05; }
+    panX = 0; panY = 0;
+    updateCamera();
+  }
+  document.querySelectorAll(".view-presets button").forEach(b=>{
+    b.onclick = ()=> setPreset(b.dataset.view);
+  });
+
+  // Captura a cena 3D atual como imagem (PNG), trocando temporariamente para a vista
+  // pedida e devolvendo a câmera para a posição em que o usuário estava depois.
+  // Calcula a distância de câmera que enquadra o caminhão o mais justo possível na
+  // imagem (em vez de usar o zoom genérico da tela, que deixa sobrando muita margem
+  // em branco quando o caminhão é curto ou tem poucos paletes).
+  // Calcula a distância de câmera que enquadra o caminhão o mais justo possível, para o
+  // ângulo de câmera EXATO que está ativo (rotY/rotX já definidos pelo setPreset chamado
+  // antes desta função) — projeta os 8 cantos do caminhão numa câmera de referência
+  // distante e mede o quanto precisa aproximar/afastar para eles ocuparem quase toda a
+  // tela, em vez de usar uma fórmula genérica de esfera que sobrava espaço em branco.
+  // Enquadra a câmera só na parte do caminhão que realmente tem carga (não no comprimento
+  // vazio do caminhão inteiro) — evita o efeito de "túnel" que aparecia quando a carga não
+  // enche o caminhão todo. Também centraliza a câmera no meio da carga, não no meio do
+  // caminhão, e usa um campo de visão mais estreito (menos "olho de peixe") pra reduzir a
+  // distorção de perspectiva nas quinas do desenho.
+  function calcularEnquadramentoCarga(truck){
+    let minX, maxX, minZ, maxZ, maxY;
+    if(lastPack && lastPack.placed && lastPack.placed.length>0){
+      minX=Infinity; maxX=-Infinity; minZ=Infinity; maxZ=-Infinity; maxY=0;
+      lastPack.placed.forEach(u=>{
+        minX=Math.min(minX,u.x); maxX=Math.max(maxX,u.x+u.d);
+        minZ=Math.min(minZ,u.z); maxZ=Math.max(maxZ,u.z+u.w);
+        maxY=Math.max(maxY,u.y+u.h);
+      });
+    } else {
+      minX=0; maxX=truck.comprimento; minZ=0; maxZ=truck.largura; maxY=truck.altura;
+    }
+    const worldMinX = minX - truck.comprimento/2, worldMaxX = maxX - truck.comprimento/2;
+    const worldMinZ = minZ - truck.largura/2, worldMaxZ = maxZ - truck.largura/2;
+    const centerX = (worldMinX+worldMaxX)/2, centerZ = (worldMinZ+worldMaxZ)/2, centerY = maxY/2;
+
+    const mx=0.35, my=0.3, mz=0.05;
+    const cantosAbs = [];
+    [worldMinX-mx, worldMaxX+mx].forEach(x=>{
+      [0, maxY+my].forEach(y=>{
+        [worldMinZ-mz, worldMaxZ+mz].forEach(z=>{
+          cantosAbs.push(new THREE.Vector3(x, y, z));
+        });
+      });
+    });
+
+    function maxNdcParaDistancia(d){
+      const cam = camera.clone();
+      cam.position.set(
+        centerX + d*Math.sin(rotY)*Math.cos(rotX),
+        centerY + d*Math.sin(-rotX),
+        centerZ + d*Math.cos(rotY)*Math.cos(rotX)
+      );
+      cam.lookAt(centerX, centerY, centerZ);
+      cam.updateMatrixWorld(true);
+      cam.updateProjectionMatrix();
+      let maxAbs = 0;
+      cantosAbs.forEach(c=>{
+        const p = c.clone().project(cam);
+        maxAbs = Math.max(maxAbs, Math.abs(p.x), Math.abs(p.y));
+      });
+      return maxAbs;
+    }
+
+    const alvo = 0.99;
+    let lo = 0.5, hi = 100;
+    for(let i=0;i<30;i++){
+      const mid = (lo+hi)/2;
+      if(maxNdcParaDistancia(mid) > alvo) lo = mid; else hi = mid;
+    }
+    return { dist: hi, centerX, centerY, centerZ };
+  }
+
+  function captureSnapshot(view){
+    const prevRotY = rotY, prevRotX = rotX, prevCamDist = camDist;
+    const prevPixelRatio = renderer.getPixelRatio();
+    const prevFov = camera.fov;
+    const gridEstavaVisivel = gridChao ? gridChao.visible : false;
+    if(gridChao) gridChao.visible = false; // sem o quadriculado de fundo na imagem impressa
+    renderer.setPixelRatio(Math.max(prevPixelRatio, 2)); // mais nítido na impressão
+
+    // Reconstrói os rótulos dos paletes em preto (com contorno branco) — a cor normal
+    // (off-white) foi pensada pro fundo escuro da tela e fica ilegível no papel branco.
+    const truck = getTruck();
+    if(lastPack && lastPack.placed){
+      modoImpressaoRotulos = true;
+      clearPalletMeshes();
+      lastPack.placed.forEach(u=> addPalletMesh(u, truck));
+    }
+
+    setPreset(view); // só usa o ângulo (rotY/rotX); a posição real é calculada abaixo
+    camera.fov = 24; // campo de visão mais estreito = menos distorção tipo "olho de peixe"
+    camera.updateProjectionMatrix();
+    const enq = calcularEnquadramentoCarga(truck);
+    camera.position.set(
+      enq.centerX + enq.dist*Math.sin(rotY)*Math.cos(rotX),
+      enq.centerY + enq.dist*Math.sin(-rotX),
+      enq.centerZ + enq.dist*Math.cos(rotY)*Math.cos(rotX)
+    );
+    camera.lookAt(enq.centerX, enq.centerY, enq.centerZ);
+    renderer.render(scene, camera);
+    const dataUrl = renderer.domElement.toDataURL("image/png");
+    renderer.setPixelRatio(prevPixelRatio);
+    if(gridChao) gridChao.visible = gridEstavaVisivel;
+    camera.fov = prevFov;
+    camera.updateProjectionMatrix();
+
+    // Volta os rótulos para a cor normal de tela (off-white) depois da captura.
+    if(lastPack && lastPack.placed){
+      modoImpressaoRotulos = false;
+      clearPalletMeshes();
+      lastPack.placed.forEach(u=> addPalletMesh(u, truck));
+    }
+
+    rotY = prevRotY; rotX = prevRotX; camDist = prevCamDist;
+    updateCamera();
+    renderer.render(scene, camera);
+    return dataUrl;
+  }
+
+  function animate(){
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+  }
+
+  function clearTruckMesh(){
+    if(truckWire){ scene.remove(truckWire); truckWire=null; }
+  }
+  function buildTruckMesh(truck){
+    clearTruckMesh();
+    const g = new THREE.Group();
+    const geo = new THREE.BoxGeometry(truck.comprimento, truck.altura, truck.largura);
+    const edges = new THREE.EdgesGeometry(geo);
+    const wire = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color:0x4fb8c4, transparent:true, opacity:0.85}));
+    wire.position.set(0, truck.altura/2, 0);
+    g.add(wire);
+
+    // floor plane
+    const floorGeo = new THREE.PlaneGeometry(truck.comprimento, truck.largura);
+    const floorMat = new THREE.MeshBasicMaterial({color:0x1c222c, transparent:true, opacity:0.55, side:THREE.DoubleSide});
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI/2;
+    g.add(floor);
+
+    // cab indicator (front)
+    const cabGeo = new THREE.BoxGeometry(0.5, 0.6, truck.largura*0.9);
+    const cabEdges = new THREE.EdgesGeometry(cabGeo);
+    const cab = new THREE.LineSegments(cabEdges, new THREE.LineBasicMaterial({color:0xf2a93b}));
+    cab.position.set(-truck.comprimento/2-0.3, 0.5, 0);
+    g.add(cab);
+
+    truckWire = g;
+    scene.add(g);
+    updateDimOverlay(truck, lastPack);
+  }
+
+  // Mostra na tela as dimensões do caminhão e, se a carga já foi montada, o volume
+  // ocupado pela carga (comprimento/largura/altura reais usados pelos paletes).
+  function updateDimOverlay(truck, result){
+    const overlay = $("dim-overlay");
+    let html = `<div><span class="dim-label">Caminhão</span><span class="dim-truck">${truck.comprimento.toFixed(2)} × ${truck.largura.toFixed(2)} × ${truck.altura.toFixed(2)} m</span></div>`;
+    if(result && result.placed && result.placed.length>0){
+      const maxX = Math.max(...result.placed.map(u=>u.x+u.d));
+      const minZ = Math.min(...result.placed.map(u=>u.z));
+      const maxZ = Math.max(...result.placed.map(u=>u.z+u.w));
+      const maxY = Math.max(...result.placed.map(u=>u.y+u.h));
+      html += `<div><span class="dim-label">Carga</span><span class="dim-carga">${maxX.toFixed(2)} × ${(maxZ-minZ).toFixed(2)} × ${maxY.toFixed(2)} m</span></div>`;
+    }
+    overlay.innerHTML = html;
+  }
+
+  // Cria um rótulo de texto (sprite com canvas) para identificar Pedido/Seq em cima de cada palete.
+  // Sprites aparecem no render do WebGL e por isso também saem na impressão (o navegador
+  // imprime o canvas como imagem do que está desenhado na tela).
+  function makeTextSprite(linhas, fontSize, corPreenchimento, corContorno){
+    fontSize = fontSize || 30;
+    // Aceita tanto um array de linhas quanto uma única string (compatibilidade).
+    if(!Array.isArray(linhas)) linhas = [linhas];
+    linhas = linhas.filter(Boolean);
+    if(linhas.length===0) linhas = [""];
+
+    const fontFamily = "'Segoe UI', 'Helvetica Neue', Arial, sans-serif";
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    ctx.font = `700 ${fontSize}px ${fontFamily}`;
+    const padX = 12, padY = 8;
+    const lineHeight = fontSize * 1.18;
+    const maxWidth = Math.max(...linhas.map(l=> ctx.measureText(l).width));
+    const w = Math.ceil(maxWidth) + padX*2;
+    const h = Math.ceil(lineHeight * linhas.length) + padY*2;
+    canvas.width = w; canvas.height = h;
+
+    ctx.font = `700 ${fontSize}px ${fontFamily}`;
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    // Contorno azul-escuro (em vez de preto puro) + preenchimento off-white — tonalidade
+    // mais suave e alinhada à paleta do app, mas ainda com bom contraste sobre qualquer
+    // cor de palete. No modo impressão (fundo branco), usa texto preto + contorno branco.
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = corContorno || "rgba(18,21,26,0.92)";
+    ctx.lineWidth = fontSize*0.15;
+    ctx.fillStyle = corPreenchimento || "#f1efe9";
+
+    linhas.forEach((linha, i)=>{
+      const y = padY + lineHeight*i + lineHeight/2;
+      ctx.strokeText(linha, w/2, y);
+      ctx.fillText(linha, w/2, y);
+    });
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.minFilter = THREE.LinearFilter;
+    const material = new THREE.SpriteMaterial({map:texture, depthTest:true, depthWrite:false, transparent:true});
+    const sprite = new THREE.Sprite(material);
+    const scale = 0.26;
+    sprite.scale.set(scale*(w/h), scale, 1);
+    return sprite;
+  }
+
+  function clearPalletMeshes(){
+    while(palletGroup.children.length) palletGroup.remove(palletGroup.children[0]);
+  }
+  function addPalletMesh(u, truck){
+    const geo = new THREE.BoxGeometry(u.d, u.h, u.w);
+    const mat = new THREE.MeshLambertMaterial({color:new THREE.Color(u.color), transparent:true, opacity:0.88});
+    const mesh = new THREE.Mesh(geo, mat);
+    const cx = (u.x + u.d/2) - truck.comprimento/2;
+    const cy = u.y + u.h/2;
+    const cz = (u.z + u.w/2) - truck.largura/2;
+    mesh.position.set(cx, cy, cz);
+    mesh.userData.paleteUid = u.uid;
+    palletGroup.add(mesh);
+
+    const edgeColor = u.bloqueado ? 0xffffff : (u.empilhadoSobre!=null ? 0x4fb8c4 : (u.obs && u.obs.toUpperCase().indexOf("PRIORIDADE")>=0 ? 0xe2574c : 0x0e1116));
+    const edges = new THREE.EdgesGeometry(geo);
+    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color:edgeColor, linewidth:1}));
+    line.position.copy(mesh.position);
+    palletGroup.add(line);
+
+    const linha1 = `${u.pedido}${u.seq?"-"+u.seq:""}`;
+    const linha2 = `${(u.romaneio!=null)?"#"+u.romaneio:""}${u.bloqueado?" 🔒":""}`.trim();
+    const corTexto = modoImpressaoRotulos ? "#111111" : undefined;
+    const corBorda = modoImpressaoRotulos ? "rgba(255,255,255,0.95)" : undefined;
+    const sprite = makeTextSprite([linha1, linha2], undefined, corTexto, corBorda);
+    sprite.position.set(cx, cy + u.h/2 + 0.14, cz);
+    sprite.userData.isPalletLabel = true;
+    sprite.visible = $("chk-rotulos") ? $("chk-rotulos").checked : true;
+    palletGroup.add(sprite);
+
+    // Etiqueta extra, maior e em âmbar, bem destacada, só para paletes remontados —
+    // fica acima do rótulo normal, difícil de não notar mesmo de longe.
+    if(u.empilhadoSobre!=null){
+      const arrowSprite = makeTextSprite(["⬆ REMONTADO"], 34, modoImpressaoRotulos ? "#8a5a00" : "#f2a93b", corBorda);
+      arrowSprite.position.set(cx, cy + u.h/2 + 0.42, cz);
+      arrowSprite.userData.isPalletLabel = true;
+      arrowSprite.visible = $("chk-rotulos") ? $("chk-rotulos").checked : true;
+      palletGroup.add(arrowSprite);
+    }
+  }
+
+  // Mostra/oculta todos os rótulos flutuantes dos paletes de uma vez, para uma visão
+  // mais limpa quando a carga tem muitos paletes próximos uns dos outros.
+  function aplicarVisibilidadeRotulos(){
+    const mostrar = $("chk-rotulos").checked;
+    palletGroup.children.forEach(obj=>{
+      if(obj.userData && obj.userData.isPalletLabel) obj.visible = mostrar;
+    });
+  }
+  $("chk-rotulos").addEventListener("change", aplicarVisibilidadeRotulos);
+
+  /* ---------------- MONTAR / STATS ---------------- */
+  $("btn-montar").onclick = montar;
+  $("btn-limpar").onclick = ()=>{
+    clearPalletMeshes();
+    lastPack = null;
+    remontagensSalvas = []; rotacoesSalvas = {}; bloqueiosSalvos = new Set(); lastPackTruckDims = null;
+    pedidos.forEach(p=> delete p.ordemCarga);
+    renderPedidosList();
+    renderStats(null);
+    atualizarSeletorPaleteIndividual();
+    atualizarSeletoresRemontagem();
+    updateDimOverlay(getTruck(), null);
+  };
+
+  // Ordem de carregamento: o pedido cujos paletes ficam mais perto da cabine (x menor)
+  // deve ser carregado PRIMEIRO (senão fica inacessível depois); o pedido mais perto da
+  // porta (x maior) é carregado por último. Calcula 1 número de ordem por pedido, usando
+  // a posição x mais próxima da cabine entre todos os paletes daquele pedido.
+  function computeOrdemCarregamento(result){
+    // Se todos os pedidos já têm uma ordem de carregamento definida (de uma montagem
+    // anterior), preserva ela em vez de recalcular do zero — assim, ajustes manuais
+    // (arrastar, girar, remontar) e um novo clique em "Montar Carga 3D" não embaralham a
+    // sequência que já tinha sido estabelecida. Só recalcula do zero quando surge um
+    // pedido novo (que ainda não tem ordem nenhuma) ou quando é a primeira montagem.
+    const todosJaTinhamOrdem = pedidos.length>0 && pedidos.every(p=>p.ordemCarga!=null);
+    if(todosJaTinhamOrdem) return;
+
+    pedidos.forEach(p=> delete p.ordemCarga);
+    const minXByPedido = new Map();
+    result.placed.forEach(u=>{
+      const cur = minXByPedido.get(u.pedidoId);
+      if(cur===undefined || u.x < cur) minXByPedido.set(u.pedidoId, u.x);
+    });
+    const ordenado = Array.from(minXByPedido.entries()).sort((a,b)=>a[1]-b[1]);
+    ordenado.forEach(([pedidoId], idx)=>{
+      const p = pedidos.find(x=>x.id===pedidoId);
+      if(p) p.ordemCarga = idx+1;
+    });
+  }
+
+  // Guarda as remontagens manuais feitas pelo usuário de forma estável (por pedido-seq-
+  // romaneio ou ID do palete, não pelo "uid" temporário que muda a cada nova montagem),
+  // para poder reaplicá-las automaticamente sempre que "Montar Carga 3D" for clicado de
+  // novo — antes, isso desfazia qualquer remontagem manual.
+  let remontagensSalvas = []; // [{paleteKey, destinoKey}]
+
+  // Guarda quais paletes foram girados manualmente (individual, seja pelo seletor ou
+  // clicando direto no 3D), também de forma estável — reaplicado antes de cada empacotamento
+  // novo, do mesmo jeito que as remontagens. Grava a orientação FINAL exata (não um simples
+  // alternar), porque o empacotamento automático pode já escolher a orientação invertida
+  // por conta própria, então "alternar a partir do padrão" nem sempre reproduz o que o
+  // usuário realmente escolheu.
+  let rotacoesSalvas = {}; // { [paleteKey]: {w, d} }
+
+  // Guarda quais paletes foram travados manualmente com o cadeado (Shift+clique no
+  // palete) — um palete travado não pode ser arrastado nem girado no 3D, até ser
+  // destravado de novo. Persiste entre montagens, igual rotação e remontagem.
+  let bloqueiosSalvos = new Set(); // Set de paleteKey
+
+  function aplicarBloqueiosSalvos(units){
+    units.forEach(u=>{
+      if(bloqueiosSalvos.has(chaveEstavelPalete(u))) u.bloqueado = true;
+    });
+  }
+
+  // Identidade estável de cada palete, independente da ORDEM em que ele aparece nas
+  // listas de empacotamento (que muda a cada montagem). Prioriza o ID físico do palete
+  // quando existe; senão usa o pedido (pedidoId, que não muda) + a posição dele dentro
+  // da lista de paletes DAQUELE pedido (origemIdx, atribuída no expandUnits e também
+  // fixa) — isso garante uma chave sempre única e sempre a mesma pro mesmo palete físico,
+  // mesmo quando vários paletes do mesmo pedido não têm romaneio/ID próprios.
+  function chaveEstavelPalete(u){
+    if(u.idPalete) return "ID:"+u.idPalete;
+    return "PEDIDO:"+u.pedidoId+"-IDX:"+(u.origemIdx!=null?u.origemIdx:0);
+  }
+
+  function registrarRotacaoSalva(u){
+    rotacoesSalvas[chaveEstavelPalete(u)] = {w:u.w, d:u.d};
+  }
+
+  // Aplica, ANTES do empacotamento, a largura/profundidade exata que o usuário definiu ao
+  // girar manualmente — assim o algoritmo de empacotamento já parte da orientação certa,
+  // sem precisar reposicionar nada depois.
+  function aplicarRotacoesSalvas(units){
+    units.forEach(u=>{
+      const salvo = rotacoesSalvas[chaveEstavelPalete(u)];
+      if(salvo){ u.w = salvo.w; u.d = salvo.d; u.travada = true; }
+    });
+  }
+
+  // Núcleo puro da reorganização: reempacota só os paletes que estão no chão (os já
+  // remontados ficam de fora, pois não ocupam piso) e reposiciona cada palete remontado
+  // conforme a nova posição do seu destino. Só mexe nos dados (lastPack.placed/unplaced),
+  // sem redesenhar nada — quem chama decide quando atualizar a tela.
+  function reempacotarConsiderandoEmpilhados(truck){
+    const otimizar = $("chk-otimizar").checked;
+    const permitirRotacao = $("chk-rotacao").checked;
+    const empilhados = lastPack.placed.filter(u=>u.empilhadoSobre!=null);
+    const piso = lastPack.placed.filter(u=>u.empilhadoSobre==null);
+    const poolParaReempacotar = piso.concat(lastPack.unplaced||[]);
+    const resultado = packTruck(poolParaReempacotar, truck, otimizar, permitirRotacao);
+    empilhados.forEach(emp=>{
+      const novoDestino = resultado.placed.find(u=>u.uid===emp.empilhadoSobre);
+      if(novoDestino){
+        emp.x = novoDestino.x;
+        emp.z = novoDestino.z;
+        emp.y = novoDestino.y + novoDestino.h;
+      }
+    });
+    lastPack.placed = resultado.placed.concat(empilhados);
+    lastPack.unplaced = resultado.unplaced;
+  }
+
+  // Reaplica, numa montagem recém-calculada do zero, todas as remontagens manuais salvas
+  // anteriormente — encontrando cada palete pela chave estável (não pelo uid, que é novo
+  // a cada montagem). Se algum palete referenciado não existir mais (pedido removido/
+  // editado) ou não couber mais, ignora essa remontagem silenciosamente em vez de travar.
+  function reaplicarRemontagensSalvas(truck){
+    if(remontagensSalvas.length===0) return;
+    let mudouAlgo = false;
+    remontagensSalvas.forEach(rec=>{
+      const baixo = lastPack.placed.find(u=> chaveEstavelPalete(u)===rec.paleteKey && u.empilhadoSobre==null);
+      const destino = lastPack.placed.find(u=> chaveEstavelPalete(u)===rec.destinoKey);
+      if(!baixo || !destino || baixo===destino) return;
+      const novoY = destino.y + destino.h;
+      if(novoY + baixo.h > truck.altura + 1e-6) return; // não cabe mais (ex.: caminhão trocado)
+      if(!destino.uid) destino.uid = "u_reaplicado_" + Date.now() + "_" + Math.random().toString(36).slice(2,6);
+      baixo.x = destino.x; baixo.z = destino.z; baixo.y = novoY;
+      baixo.empilhadoSobre = destino.uid;
+      mudouAlgo = true;
+    });
+    if(mudouAlgo) reempacotarConsiderandoEmpilhados(truck);
+  }
+
+  let lastPackTruckDims = null; // dimensões do caminhão usadas na última montagem bem-sucedida
+
+  function montar(){
+    if(pedidos.length===0){ alert("Adicione ao menos um pedido antes de montar a carga."); return; }
+    const truck = getTruck();
+    buildTruckMesh(truck);
+    const units = expandUnits();
+    aplicarRotacoesSalvas(units);
+    aplicarBloqueiosSalvos(units);
+    const otimizar = $("chk-otimizar").checked;
+    const permitirRotacao = $("chk-rotacao").checked;
+
+    // Se já existe uma carga montada com o MESMO caminhão, usa o empacotamento
+    // incremental: mantém os paletes que já estavam posicionados exatamente onde estavam
+    // e só encaixa os pedidos novos no espaço que sobrou — em vez de reorganizar tudo do
+    // zero (o que embaralharia ajustes manuais e a formação já feita).
+    const mesmoTruck = lastPackTruckDims &&
+      Math.abs(lastPackTruckDims.comprimento-truck.comprimento)<1e-6 &&
+      Math.abs(lastPackTruckDims.largura-truck.largura)<1e-6 &&
+      Math.abs(lastPackTruckDims.altura-truck.altura)<1e-6;
+
+    let result;
+    if(lastPack && lastPack.placed && lastPack.placed.length>0 && mesmoTruck){
+      result = packTruckIncremental(units, truck, otimizar, permitirRotacao);
+    } else if(lastPack && lastPack.placed && lastPack.placed.length>0){
+      // O caminhão mudou de tamanho: os paletes travados continuam no lugar (se ainda
+      // couberem), o resto é reorganizado pro novo tamanho.
+      result = packTruckRespeitandoBloqueios(units, truck, otimizar, permitirRotacao);
+    } else {
+      result = packTruck(units, truck, otimizar, permitirRotacao);
+    }
+
+    // Rede de segurança: o empacotamento incremental nunca deveria gerar paletes
+    // sobrepostos, mas se por algum motivo acontecer, descarta o resultado e refaz a
+    // carga inteira do zero (garantidamente sem sobreposição) em vez de mostrar uma
+    // carga inválida na tela.
+    if(existeSobreposicao(result.placed)){
+      console.warn("Empacotamento incremental gerou sobreposição — refazendo a carga do zero por segurança.");
+      result = packTruck(units, truck, otimizar, permitirRotacao);
+    }
+    lastPack = result;
+    lastPackTruckDims = {comprimento:truck.comprimento, largura:truck.largura, altura:truck.altura};
+
+    reaplicarRemontagensSalvas(truck);
+
+    clearPalletMeshes();
+    lastPack.placed.forEach(u=> addPalletMesh(u, truck));
+    computeOrdemCarregamento(lastPack);
+    renderPedidosList();
+    renderStats(lastPack);
+    renderLegend();
+    atualizarSeletorPaleteIndividual();
+    atualizarSeletoresRemontagem();
+    updateDimOverlay(truck, lastPack);
+    setPreset("persp");
+  }
+
+  /* ---------------- GIRAR PALETE INDIVIDUAL (após montar) ---------------- */
+  function atualizarSeletorPaleteIndividual(){
+    // O seletor "Girar palete individual" foi removido — girar agora é feito clicando
+    // direto no palete no 3D. Função mantida como no-op pra não quebrar as chamadas já
+    // existentes em outros pontos do código.
+    if(!$("sel-palete-individual")) return;
+    const sel = $("sel-palete-individual");
+    const btn = $("btn-girar-individual");
+    if(!lastPack || !lastPack.placed || lastPack.placed.length===0){
+      sel.innerHTML = '<option value="">Monte a carga primeiro</option>';
+      btn.disabled = true;
+      return;
+    }
+    // conta quantos paletes cada pedido já teve listados, para numerar "palete 1 de N" etc.
+    const contagemPorPedido = new Map();
+    lastPack.placed.forEach(u=>{
+      contagemPorPedido.set(u.pedidoId, (contagemPorPedido.get(u.pedidoId)||0)+1);
+    });
+    const contadorAtual = new Map();
+    sel.innerHTML = lastPack.placed.map((u,i)=>{
+      const n = (contadorAtual.get(u.pedidoId)||0)+1;
+      contadorAtual.set(u.pedidoId, n);
+      const total = contagemPorPedido.get(u.pedidoId);
+      const romTag = (u.romaneio!=null) ? ` · Rom.${u.romaneio}` : '';
+      const label = `${u.pedido}${u.seq?'-'+u.seq:''}${romTag} — palete ${n}/${total} (${u.w.toFixed(2)}×${u.d.toFixed(2)}×${u.h.toFixed(2)})`;
+      return `<option value="${i}">${escapeHtml(label)}</option>`;
+    }).join("");
+    btn.disabled = false;
+  }
+
+  function unidadesSeSobrepoe(a,b){
+    const ax1=a.x, ax2=a.x+a.d, az1=a.z, az2=a.z+a.w;
+    const bx1=b.x, bx2=b.x+b.d, bz1=b.z, bz2=b.z+b.w;
+    return ax1 < bx2-1e-6 && bx1 < ax2-1e-6 && az1 < bz2-1e-6 && bz1 < az2-1e-6;
+  }
+
+  // Verificação de segurança: percorre todos os pares de paletes na mesma altura e
+  // confere se algum par está fisicamente sobreposto. Usada logo depois de montar a
+  // carga para nunca deixar passar um resultado inválido pra tela.
+  function existeSobreposicao(placed){
+    for(let i=0;i<placed.length;i++){
+      for(let j=i+1;j<placed.length;j++){
+        const a = placed[i], b = placed[j];
+        if(Math.abs(a.y-b.y) > 1e-6) continue; // alturas diferentes não contam
+        if(unidadesSeSobrepoe(a,b)) return true;
+      }
+    }
+    return false;
+  }
+
+  // Identifica qual palete (se algum) está embaixo do cursor do mouse, usando raycasting
+  // contra as malhas 3D dos paletes já montados.
+  function paletePorRaycast(e){
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouseNDC.x = ((e.clientX-rect.left)/rect.width)*2-1;
+    mouseNDC.y = -((e.clientY-rect.top)/rect.height)*2+1;
+    raycaster.setFromCamera(mouseNDC, camera);
+    const intersects = raycaster.intersectObjects(palletGroup.children, true);
+    const hit = intersects.find(i=> i.object.userData && i.object.userData.paleteUid);
+    if(!hit) return null;
+    return lastPack.placed.find(u=>u.uid===hit.object.userData.paleteUid) || null;
+  }
+
+  // Trava/destrava um palete específico (Shift+clique nele no 3D). Travado, ele não pode
+  // ser arrastado nem girado até destravar de novo — útil pra "fixar" um palete no lugar
+  // certo enquanto se ajusta os outros ao redor.
+  function alternarBloqueioPalete(u){
+    u.bloqueado = !u.bloqueado;
+    const chave = chaveEstavelPalete(u);
+    if(u.bloqueado) bloqueiosSalvos.add(chave); else bloqueiosSalvos.delete(chave);
+    clearPalletMeshes();
+    lastPack.placed.forEach(uu=> addPalletMesh(uu, getTruck()));
+    mostrarFeedback3D(u.bloqueado ? "🔒 Palete travado" : "🔓 Palete destravado");
+  }
+
+  // Mensagem curta que aparece e some sozinha em cima do canvas 3D, pra dar feedback de
+  // ações que não abrem alerta (travar/destravar, tentar mexer num palete travado).
+  let feedback3DTimeout = null;
+  function mostrarFeedback3D(texto){
+    let el = $("feedback-3d");
+    if(!el){
+      el = document.createElement("div");
+      el.id = "feedback-3d";
+      canvasWrap.appendChild(el);
+    }
+    el.textContent = texto;
+    el.classList.add("show");
+    clearTimeout(feedback3DTimeout);
+    feedback3DTimeout = setTimeout(()=> el.classList.remove("show"), 1800);
+  }
+
+  // Arrasta o palete selecionado livremente pelo piso do caminhão, seguindo o mouse (só no
+  // plano horizontal da altura em que ele já está — não muda de "andar"). Trava dentro dos
+  // limites do caminhão e não deixa soltar em cima de outro palete (fica na última posição
+  // válida, como se esbarrasse no vizinho).
+  function moverPaleteArrastado(e){
+    const truck = getTruck();
+    const u = arrastandoPalete;
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouseNDC.x = ((e.clientX-rect.left)/rect.width)*2-1;
+    mouseNDC.y = -((e.clientY-rect.top)/rect.height)*2+1;
+    raycaster.setFromCamera(mouseNDC, camera);
+
+    const worldY = u.y + u.h/2;
+    const plano = new THREE.Plane(new THREE.Vector3(0,1,0), -worldY);
+    const ponto = new THREE.Vector3();
+    if(!raycaster.ray.intersectPlane(plano, ponto)) return;
+
+    let novoX = ponto.x + truck.comprimento/2 - u.d/2;
+    let novoZ = ponto.z + truck.largura/2 - u.w/2;
+    novoX = Math.max(0, Math.min(truck.comprimento - u.d, novoX));
+    novoZ = Math.max(0, Math.min(truck.largura - u.w, novoZ));
+
+    const candidato = {x:novoX, z:novoZ, w:u.w, d:u.d};
+    const colide = lastPack.placed.some(outro=>{
+      if(outro===u) return false;
+      if(Math.abs(outro.y - u.y) > 1e-6) return false; // só importa quem está na mesma altura
+      return unidadesSeSobrepoe(candidato, outro);
+    });
+    if(colide) return; // fica parado na última posição válida, como se batesse no vizinho
+
+    u.x = novoX; u.z = novoZ;
+    clearPalletMeshes();
+    lastPack.placed.forEach(uu=> addPalletMesh(uu, truck));
+  }
+
+  // Um clique simples (sem arrastar) num palete gira ele 90° no eixo vertical, igual o
+  // botão "Girar palete individual" — só que direto no 3D, sem precisar abrir o seletor.
+  function girarPaleteNoClique(u){
+    const truck = getTruck();
+    const novoW = u.d, novoD = u.w;
+    const novoX = Math.min(u.x, truck.comprimento - novoD);
+    const novoZ = Math.min(u.z, truck.largura - novoW);
+    if(novoX < -1e-6 || novoZ < -1e-6){
+      alert("Não dá pra girar esse palete aqui — não cabe virado nesse espaço. Arraste-o para um lugar com mais folga antes de girar.");
+      return;
+    }
+    const candidato = {x:novoX, z:novoZ, w:novoW, d:novoD};
+    const colide = lastPack.placed.some(outro=>{
+      if(outro===u) return false;
+      if(Math.abs(outro.y - u.y) > 1e-6) return false;
+      return unidadesSeSobrepoe(candidato, outro);
+    });
+    if(colide){
+      alert("Não dá pra girar esse palete aqui — ele bateria em outro palete vizinho.");
+      return;
+    }
+    u.w = novoW; u.d = novoD; u.x = novoX; u.z = novoZ; u.travada = true;
+    registrarRotacaoSalva(u);
+    clearPalletMeshes();
+    lastPack.placed.forEach(uu=> addPalletMesh(uu, truck));
+    finalizarArrastePalete();
+  }
+
+  // Depois de mover ou girar um palete manualmente, atualiza tudo que depende da posição:
+  // ordem de carregamento, estatísticas, seletores e a régua de dimensões.
+  function finalizarArrastePalete(){
+    const truck = getTruck();
+    computeOrdemCarregamento(lastPack);
+    renderPedidosList();
+    renderStats(lastPack);
+    renderLegend();
+    atualizarSeletorPaleteIndividual();
+    atualizarSeletoresRemontagem();
+    updateDimOverlay(truck, lastPack);
+  }
+
+  // Paletes baixos (altura ≤ 0,90 m) sempre nascem no chão na montagem automática (a regra
+  // geral continua sendo nunca empilhar). Esta função de remontagem é a exceção manual e
+  // explícita: o operador escolhe o palete baixo e escolhe em cima de qual outro palete ele
+  // deve ser remontado, sempre com verificação de altura do teto e de colisão.
+  const ALTURA_PALETE_BAIXO = 1.41;
+  function ehPaleteBaixo(u){ return u.h <= ALTURA_PALETE_BAIXO + 1e-6; }
+
+  function atualizarSeletoresRemontagem(){
+    const selBaixo = $("sel-palete-baixo");
+    const selDestino = $("sel-palete-destino");
+    const btn = $("btn-remontar");
+    if(!lastPack || !lastPack.placed || lastPack.placed.length===0){
+      selBaixo.innerHTML = '<option value="">Monte a carga primeiro</option>';
+      selDestino.innerHTML = '<option value="">Monte a carga primeiro</option>';
+      btn.disabled = true;
+      return;
+    }
+    const labelPara = u => {
+      const romTag = (u.romaneio!=null) ? ` #${u.romaneio}` : '';
+      return `${u.pedido}${u.seq?'-'+u.seq:''}${romTag} (${u.w.toFixed(2)}×${u.d.toFixed(2)}×${u.h.toFixed(2)}, y=${u.y.toFixed(2)}m)`;
+    };
+    const baixosIdx = lastPack.placed
+      .map((u,i)=>i)
+      .filter(i=> ehPaleteBaixo(lastPack.placed[i]) && lastPack.placed[i].empilhadoSobre==null);
+
+    selBaixo.innerHTML = baixosIdx.length
+      ? baixosIdx.map(i=>`<option value="${i}">${escapeHtml(labelPara(lastPack.placed[i]))}</option>`).join("")
+      : '<option value="">Nenhum palete baixo (≤0,90m) livre no chão</option>';
+
+    selDestino.innerHTML = lastPack.placed
+      .map((u,i)=>`<option value="${i}">${escapeHtml(labelPara(u))}</option>`).join("");
+
+    btn.disabled = baixosIdx.length===0;
+  }
+
+  function remontarPalete(){
+    if(!lastPack) return;
+    const idxBaixo = parseInt($("sel-palete-baixo").value);
+    const idxDestino = parseInt($("sel-palete-destino").value);
+    if(isNaN(idxBaixo) || isNaN(idxDestino)){ alert("Selecione o palete baixo e o palete de destino."); return; }
+    if(idxBaixo === idxDestino){ alert("Selecione dois paletes diferentes: o palete baixo e o palete em que ele vai ser remontado."); return; }
+
+    const truck = getTruck();
+    const baixo = lastPack.placed[idxBaixo];
+    const destino = lastPack.placed[idxDestino];
+    if(!baixo || !destino) return;
+
+    if(!ehPaleteBaixo(baixo)){
+      alert(`Esse palete tem ${baixo.h.toFixed(2)} m de altura — só paletes de até ${ALTURA_PALETE_BAIXO.toFixed(2)} m podem ser remontados em cima de outro.`);
+      return;
+    }
+
+    const novoY = destino.y + destino.h;
+    if(novoY + baixo.h > truck.altura + 1e-6){
+      alert(`Não cabe: empilhar esse palete ali ultrapassaria a altura do caminhão (${truck.altura.toFixed(2)} m).`);
+      return;
+    }
+
+    // Verifica se já não existe outro palete remontado exatamente nesse mesmo lugar em cima do destino.
+    const candidato = Object.assign({}, baixo, {x:destino.x, z:destino.z, y:novoY});
+    const colide = lastPack.placed.some((outro, i)=>{
+      if(i===idxBaixo || i===idxDestino) return false;
+      if(Math.abs(outro.y - novoY) > 1e-6) return false; // só importa quem está na mesma altura
+      return unidadesSeSobrepoe(candidato, outro);
+    });
+    if(colide){
+      alert("Já existe outro palete remontado nesse mesmo lugar em cima do destino escolhido. Escolha outro destino.");
+      return;
+    }
+
+    // Referência estável por uid (não por índice) — o índice do destino no piso muda
+    // assim que o piso é reorganizado logo em seguida.
+    if(!destino.uid) destino.uid = "u_manual_" + Date.now();
+    baixo.empilhadoSobre = destino.uid;
+    baixo.x = destino.x; baixo.z = destino.z; baixo.y = novoY;
+
+    // Grava essa remontagem de forma estável, pra ela sobreviver a um novo clique em
+    // "Montar Carga 3D" (que recalcula tudo do zero).
+    remontagensSalvas.push({ paleteKey: chaveEstavelPalete(baixo), destinoKey: chaveEstavelPalete(destino) });
+
+    reorganizarPisoAposRemontagem(truck);
+
+    atualizarSeletorPaleteIndividual();
+    atualizarSeletoresRemontagem();
+    updateDimOverlay(truck, lastPack);
+    alert(`Palete ${baixo.pedido}${baixo.seq?'-'+baixo.seq:''} remontado em cima de ${destino.pedido}${destino.seq?'-'+destino.seq:''}. A carga foi reorganizada para aproveitar o espaço que ficou livre no piso.`);
+  }
+  $("btn-remontar").onclick = remontarPalete;
+
+  // Depois de remontar um palete em cima de outro, o espaço que ele ocupava no piso fica
+  // livre. Esta função reempacota SÓ os paletes que continuam no chão (os já remontados
+  // ficam de fora, pois não ocupam piso) — incluindo, na mesma rodada, os paletes que antes
+  // não tinham coubido na carga, já que agora pode ter sobrado espaço para eles.
+  function reorganizarPisoAposRemontagem(truck){
+    reempacotarConsiderandoEmpilhados(truck);
+
+    clearPalletMeshes();
+    lastPack.placed.forEach(u=> addPalletMesh(u, truck));
+    computeOrdemCarregamento(lastPack);
+    renderPedidosList();
+    renderStats(lastPack);
+    renderLegend();
+  }
+
+  /* ---------------- SALVAR / CARREGAR CARGA (arquivo .json) ---------------- */
+  const LS_SEQ_KEY = "gdm_carga3d_proximo_numero";
+  const LS_HIST_KEY = "gdm_carga3d_historico";
+
+  function proximoNumeroSequencial(){
+    let n = parseInt(localStorage.getItem(LS_SEQ_KEY)) || 1;
+    localStorage.setItem(LS_SEQ_KEY, String(n+1));
+    return n;
+  }
+
+  function lerHistorico(){
+    try{
+      const raw = localStorage.getItem(LS_HIST_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){ return []; }
+  }
+  function salvarHistorico(lista){
+    localStorage.setItem(LS_HIST_KEY, JSON.stringify(lista));
+  }
+  function registrarNoHistorico(entry){
+    const hist = lerHistorico();
+    hist.unshift(entry); // mais recente primeiro
+    salvarHistorico(hist);
+  }
+
+  // Sugestão de roteiro de entrega: quem foi carregado por ÚLTIMO (mais perto da porta,
+  // ordem de carregamento com número maior) costuma ser o mais fácil de tirar primeiro do
+  // caminhão — por isso vira a PRIMEIRA parada de entrega. Usa a cidade/UF de cada pedido.
+  function renderRoteiro(){
+    const wrap = $("roteiro-wrap");
+    if(pedidos.length===0){
+      wrap.innerHTML = '<div class="doc-warn">Nenhum pedido cadastrado ainda.</div>';
+      return;
+    }
+    const temOrdem = pedidos.some(p=>p.ordemCarga);
+    const ordenados = pedidos.slice().sort((a,b)=> (b.ordemCarga||0) - (a.ordemCarga||0));
+    const semCidade = ordenados.filter(p=>!p.cidade).length;
+
+    wrap.innerHTML = `
+      ${!temOrdem ? '<div class="doc-warn">⚠ Monte a carga em 3D primeiro para calcular a ordem de carregamento — sem isso, o roteiro usa a ordem de cadastro dos pedidos.</div>' : ''}
+      ${semCidade>0 ? `<div class="doc-warn">⚠ ${semCidade} pedido(s) sem cidade/UF informada — edite o pedido (campo "Cidade / UF") pra completar e conseguir montar a rota no mapa.</div>` : ''}
+      <table class="rom-table" style="max-width:900px;background:#fff;color:#111;border-radius:6px;overflow:hidden;">
+        <thead><tr><th>Parada</th><th>Pedido</th><th>Cliente</th><th>Cidade/UF</th><th>Carregado</th></tr></thead>
+        <tbody>${ordenados.map((p,i)=>`
+          <tr>
+            <td>${i+1}ª</td>
+            <td><span class="swatch" style="background:${p.color}"></span>${escapeHtml(p.pedido)}${p.seq?'-'+escapeHtml(p.seq):''}</td>
+            <td>${escapeHtml(p.cliente)}</td>
+            <td>${p.cidade?escapeHtml(p.cidade)+(p.uf?'/'+escapeHtml(p.uf):''):'<span style="color:#c0392b;">Sem cidade/UF</span>'}</td>
+            <td>${p.ordemCarga?p.ordemCarga+'º':'—'}</td>
+          </tr>
+        `).join("")}</tbody>
+      </table>
+    `;
+  }
+
+  $("btn-roteiro-maps").onclick = ()=>{
+    const ordenados = pedidos.slice().sort((a,b)=> (b.ordemCarga||0) - (a.ordemCarga||0));
+    const paradas = [];
+    ordenados.forEach(p=>{
+      if(!p.cidade) return;
+      const label = `${p.cidade}${p.uf?', '+p.uf:''}, Brasil`;
+      if(paradas.length===0 || paradas[paradas.length-1] !== label) paradas.push(label);
+    });
+    if(paradas.length===0){
+      alert("Nenhum pedido tem cidade/UF preenchida. Edite os pedidos (botão ✎ Editar) para adicionar essa informação antes de montar a rota.");
+      return;
+    }
+    const url = "https://www.google.com/maps/dir/" + paradas.map(p=>encodeURIComponent(p)).join("/");
+    window.open(url, "_blank");
+  };
+
+  function renderHistorico(){
+    const hist = lerHistorico();
+    const wrap = $("hist-table-wrap");
+    if(hist.length===0){
+      wrap.innerHTML = '<div id="empty-msg" style="padding:40px 10px;">Nenhuma carga salva ainda neste navegador.<br>Use o botão "💾 Salvar Carga" na aba Montagem 3D para começar a registrar aqui.</div>';
+      return;
+    }
+    const totalGeral = hist.reduce((s,h)=>s+(h.totalPeso||0),0);
+    const rows = hist.map((h,i)=>`
+      <tr>
+        <td>${String(h.numero).padStart(3,"0")}</td>
+        <td>${escapeHtml(h.nomeCarga||"")}</td>
+        <td>${new Date(h.salvoEm).toLocaleString('pt-BR')}</td>
+        <td>${escapeHtml(h.veiculo||"")}</td>
+        <td>${h.totalPedidos}</td>
+        <td>${h.totalPallets}</td>
+        <td>${fmt(h.totalPeso)} kg</td>
+        <td><span class="hist-file">${escapeHtml(h.arquivo||"")}</span></td>
+        <td><button class="mini-btn" onclick="__abrirDetalheCarga(${i})">🔍 Detalhar</button></td>
+      </tr>
+    `).join("");
+    wrap.innerHTML = `
+      <table class="hist-table">
+        <thead><tr>
+          <th>Nº</th><th>Nome da Carga</th><th>Salva em</th><th>Veículo</th>
+          <th>Pedidos</th><th>Paletes</th><th>Peso Bruto</th><th>Arquivo</th><th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="hist-totais">Total de cargas registradas: <b>${hist.length}</b> · Peso bruto acumulado: <b>${fmt(totalGeral)} kg</b></div>
+    `;
+  }
+
+  function abrirDetalheCarga(idx){
+    const hist = lerHistorico();
+    const h = hist[idx];
+    if(!h) return;
+    const pedidosDaCarga = h.pedidos || [];
+    const linhas = pedidosDaCarga.map(p=>`
+      <tr>
+        <td>${escapeHtml(p.pedido||"")}</td>
+        <td>${escapeHtml(p.seq||"—")}</td>
+        <td>${escapeHtml(p.cliente||"")}</td>
+        <td>${escapeHtml(p.itemCod||"")}</td>
+        <td>${escapeHtml(p.itemDesc||"")}</td>
+        <td>${p.qtd}</td>
+        <td>${(p.w||0).toFixed(2)}×${(p.d||0).toFixed(2)}×${(p.h||0).toFixed(2)} m</td>
+        <td>${fmt(p.pesoBruto)}</td>
+        <td>${fmt(p.pesoLiq)}</td>
+        <td>${p.obs?`<span class="obs-tag">${escapeHtml(p.obs)}</span>`:''}</td>
+      </tr>
+    `).join("");
+    const truckInfo = h.truck ? `${h.truck.comprimento?.toFixed?.(2)} × ${h.truck.largura?.toFixed?.(2)} × ${h.truck.altura?.toFixed?.(2)} m` : "—";
+    $("hist-detail-title").textContent = `Carga ${String(h.numero).padStart(3,"0")} — ${h.nomeCarga||""}`;
+    $("hist-detail-body").innerHTML = `
+      <div class="rom-header" style="margin-bottom:14px;">
+        <div class="f"><div class="l">Arquivo</div><div class="v">${escapeHtml(h.arquivo||"")}</div></div>
+        <div class="f"><div class="l">Salva em</div><div class="v">${new Date(h.salvoEm).toLocaleString('pt-BR')}</div></div>
+        <div class="f"><div class="l">Veículo</div><div class="v">${escapeHtml(h.veiculo||"")}</div></div>
+        <div class="f"><div class="l">Dimensões</div><div class="v">${truckInfo}</div></div>
+        ${h.doc?.transportadora?`<div class="f"><div class="l">Transportadora</div><div class="v">${escapeHtml(h.doc.transportadora)}</div></div>`:''}
+        ${h.doc?.motorista?`<div class="f"><div class="l">Motorista</div><div class="v">${escapeHtml(h.doc.motorista)}</div></div>`:''}
+      </div>
+      <table class="rom-table">
+        <thead><tr>
+          <th>Pedido</th><th>Seq.</th><th>Cliente</th><th>Cód. Item</th><th>Descrição</th>
+          <th>Qtd. Pal.</th><th>Dim. Palete</th><th>P.Bruto</th><th>P.Líq</th><th>Obs.</th>
+        </tr></thead>
+        <tbody>${linhas || '<tr><td colspan="10" style="text-align:center;color:var(--dim);">Sem detalhamento de paletes salvo para esta carga.</td></tr>'}</tbody>
+      </table>
+    `;
+    $("hist-detail-modal").classList.remove("hidden");
+  }
+  window.__abrirDetalheCarga = abrirDetalheCarga;
+  $("btn-hist-detail-close").onclick = ()=> $("hist-detail-modal").classList.add("hidden");
+
+  $("btn-hist-limpar").onclick = ()=>{
+    if(!confirm("Isso apaga só o registro/índice do histórico neste navegador. Os arquivos .json já baixados não são afetados. Continuar?")) return;
+    localStorage.removeItem(LS_HIST_KEY);
+    renderHistorico();
+  };
+  $("btn-hist-imprimir").onclick = ()=>{
+    const hist = lerHistorico();
+    if(hist.length===0){ alert("Não há histórico de cargas para imprimir."); return; }
+    const totalGeral = hist.reduce((s,h)=>s+(h.totalPeso||0),0);
+    const rows = hist.map(h=>`
+      <tr>
+        <td>${String(h.numero).padStart(3,"0")}</td>
+        <td>${escapeHtml(h.nomeCarga||"")}</td>
+        <td>${new Date(h.salvoEm).toLocaleString('pt-BR')}</td>
+        <td>${escapeHtml(h.veiculo||"")}</td>
+        <td>${h.totalPedidos}</td>
+        <td>${h.totalPallets}</td>
+        <td>${fmt(h.totalPeso)} kg</td>
+        <td>${escapeHtml(h.arquivo||"")}</td>
+      </tr>
+    `).join("");
+    $("romaneio-sheet").innerHTML = `
+      <h2>Histórico de Cargas Salvas</h2>
+      <div class="doc-sub">GDM Indústria e Comércio de Plásticos LTDA · gerado ${new Date().toLocaleString('pt-BR')}</div>
+      <table class="rom-table">
+        <thead><tr>
+          <th>Nº</th><th>Nome da Carga</th><th>Salva em</th><th>Veículo</th>
+          <th>Pedidos</th><th>Paletes</th><th>Peso Bruto</th><th>Arquivo</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="rom-totals">
+        <span>Total de cargas: <b>${hist.length}</b></span>
+        <span>Peso bruto acumulado: <b>${fmt(totalGeral)} kg</b></span>
+      </div>
+    `;
+    // Reaproveita o layout de impressão já testado do romaneio.
+    viewMontagem.style.display = "none";
+    viewHistorico.style.display = "none";
+    viewRomaneio.style.display = "block";
+    window.print();
+  };
+
+  // Gera o arquivo com a lista de IDs de paletes esperados nesta carga, para o app
+  // separado de Conferência de Carregamento (usado no coletor de dados por quem
+  // fisicamente carrega o caminhão). Sempre reflete os pedidos atuais, mesmo que a
+  // carga ainda não tenha sido montada em 3D (a conferência é por ID, não por posição).
+  // Monta o objeto do manifesto de conferência a partir dos pedidos atuais — usado tanto
+  // pelo export de arquivo local quanto pelo envio direto para a nuvem.
+  function montarManifestoConferencia(){
+    // Usa a montagem física atual (lastPack) quando ela existe — assim, remontagens
+    // manuais (paletes empilhados) e o fato de algum palete não ter coubido no caminhão
+    // são refletidos corretamente no manifesto. Sem montagem feita ainda, cai para uma
+    // expansão simples dos pedidos (sem informação de posição/remontagem).
+    const units = (lastPack && lastPack.placed && lastPack.placed.length>0) ? lastPack.placed : expandUnits();
+    const semId = units.filter(u=>!u.idPalete).length;
+    const paletes = units.map(u=>({
+      id: u.idPalete || null,
+      pedido: u.pedido, seq: u.seq||"", romaneio: u.romaneio,
+      cliente: u.cliente, itemCod: (pedidos.find(p=>p.id===u.pedidoId)||{}).itemCod||"",
+      itemDesc: (pedidos.find(p=>p.id===u.pedidoId)||{}).itemDesc||"",
+      local: u.local||"",
+      dims: {w:u.w, d:u.d, h:u.h}, peso: Math.round(u.peso*100)/100, pesoLiq: Math.round((u.pesoLiq||0)*100)/100,
+      bobinas: u.bobinas||null, obs:u.obs||"",
+      remontadoSobre: labelDestinoRemontagem(u),
+      ordemCarga: (pedidos.find(p=>p.id===u.pedidoId)||{}).ordemCarga || null
+    }));
+    const truck = getTruck();
+    const nomeDigitado = $("carga-nome").value.trim() || "carga";
+    const manifest = {
+      formato: "gdm-conferencia-manifesto",
+      versao: 1,
+      nomeCarga: nomeDigitado,
+      geradoEm: new Date().toISOString(),
+      veiculo: $("veiculo-preset").selectedOptions[0].textContent,
+      truck,
+      doc: {
+        data: $("doc-data").value,
+        transportadora: $("doc-transp").value,
+        motorista: $("doc-motorista").value,
+        placa: $("doc-placa").value.toUpperCase(),
+        obs: $("doc-obs").value
+      },
+      totalPaletes: paletes.length,
+      paletesSemId: semId,
+      paletes
+    };
+    return {manifest, semId};
+  }
+
+  function exportarManifestoConferencia(){
+    if(pedidos.length===0){ alert("Não há pedidos para exportar."); return; }
+    const {manifest, semId} = montarManifestoConferencia();
+    if(semId>0){
+      const continuar = confirm(`${semId} de ${manifest.paletes.length} palete(s) não têm ID físico identificado (o relatório de origem não trouxe a coluna de ID) e não poderão ser conferidos por leitura no coletor. Deseja exportar mesmo assim?`);
+      if(!continuar) return;
+    }
+    const json = JSON.stringify(manifest, null, 2);
+    const blob = new Blob([json], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const nomeArquivoBase = manifest.nomeCarga.replace(/[^\w\-. ]/g,"").trim().replace(/\s+/g,"_") || "carga";
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `conferencia_${nomeArquivoBase}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    alert(`Manifesto de conferência exportado com ${manifest.paletes.length} palete(s). Envie este arquivo para quem vai usar o app de Conferência de Carregamento no coletor.`);
+  }
+  $("btn-exportar-conferencia").onclick = exportarManifestoConferencia;
+
+  /* ---------------- ENVIO PARA A NUVEM (Firebase) ---------------- */
+  // Mesmo config do app de Conferência de Carregamento — os dois apontam para a mesma
+  // coleção "cargas" no Firestore, o que faz uma carga enviada aqui aparecer sozinha na
+  // Fila de qualquer operador que abrir o app de conferência, sem precisar transferir arquivo.
+  const firebaseConfig = {
+    apiKey: "AIzaSyACWzB60zxraOxec2nnkkyCl4k5EkYL7mE",
+    authDomain: "gdm-cargas.firebaseapp.com",
+    projectId: "gdm-cargas",
+    storageBucket: "gdm-cargas.firebasestorage.app",
+    messagingSenderId: "224755544038",
+    appId: "1:224755544038:web:ceb52c7742b8e263193027"
+  };
+  let fbDb = null, fbAvailable = false, fbAuth = null;
+  try{
+    if(window.firebase){
+      firebase.initializeApp(firebaseConfig);
+      fbDb = firebase.firestore();
+      fbDb.enablePersistence({synchronizeTabs:true}).catch(()=>{ /* ok se já habilitado em outra aba */ });
+      fbAvailable = true;
+      fbAuth = firebase.auth();
+      // Persistência só nesta aba — assim o login/logout aqui não afeta outras abas
+      // (ex.: o app de Conferência de Carregamento aberto em outra aba), mesmo usando o
+      // mesmo projeto Firebase.
+      fbAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
+      $("fb-status").textContent = "☁️ nuvem conectada";
+      $("fb-status").style.color = "var(--green)";
+    }
+  }catch(e){
+    console.warn("Firebase indisponível:", e);
+    $("fb-status").textContent = "☁️ nuvem indisponível";
+  }
+
+  /* ---------------- LOGIN (obrigatório para acessar o app) ---------------- */
+  let usuarioAtual = null;
+
+  function traduzErroLogin(err){
+    const code = err.code || "";
+    if(code.includes("wrong-password") || code.includes("invalid-credential")) return "E-mail ou senha incorretos.";
+    if(code.includes("user-not-found")) return "Usuário não encontrado.";
+    if(code.includes("too-many-requests")) return "Muitas tentativas — aguarde um pouco e tente de novo.";
+    if(code.includes("invalid-email")) return "E-mail inválido.";
+    return "Erro ao entrar: " + (err.message || "verifique sua conexão e tente de novo.");
+  }
+
+  if(fbAuth){
+    fbAuth.onAuthStateChanged(user=>{
+      if(user){
+        usuarioAtual = user;
+        $("login-overlay").style.display = "none";
+        $("usuario-email").textContent = user.email;
+      } else {
+        usuarioAtual = null;
+        $("login-overlay").style.display = "flex";
+        $("usuario-email").textContent = "";
+      }
+    });
+
+    $("btn-login").onclick = async ()=>{
+      const email = $("login-email").value.trim();
+      const senha = $("login-senha").value;
+      if(!email || !senha){ $("login-erro").textContent = "Informe e-mail e senha."; return; }
+      $("login-erro").textContent = "";
+      $("login-status").textContent = "Entrando...";
+      $("btn-login").disabled = true;
+      try{
+        await fbAuth.signInWithEmailAndPassword(email, senha);
+        $("login-status").textContent = "";
+      }catch(err){
+        $("login-erro").textContent = traduzErroLogin(err);
+      }finally{
+        $("login-status").textContent = "";
+        $("btn-login").disabled = false;
+      }
+    };
+    $("login-senha").addEventListener("keydown", e=>{ if(e.key==="Enter") $("btn-login").click(); });
+    $("login-email").addEventListener("keydown", e=>{ if(e.key==="Enter") $("login-senha").focus(); });
+
+    $("btn-logout").onclick = ()=>{
+      if(confirm("Sair da sua conta?")) fbAuth.signOut();
+    };
+  } else {
+    $("login-status").textContent = "";
+    $("login-erro").textContent = "Login indisponível — sem conexão com a nuvem. Verifique sua internet e recarregue a página.";
+    $("btn-login").disabled = true;
+  }
+
+  // Mesma lógica de chave usada no app de Conferência, para o estado inicial dos paletes
+  // já nascer coerente no documento salvo na nuvem.
+  function chaveDoPalete(p, idx){
+    return p.id ? ("ID:"+p.id) : ("SEMID:"+p.pedido+"-"+(p.seq||"")+"-"+(p.romaneio||"")+"-"+idx);
+  }
+
+  async function enviarCargaParaNuvem(){
+    if(!fbAvailable){ alert("Conexão com a nuvem não disponível agora (sem internet ou Firebase não carregou). Use o botão \"📦 Exportar p/ Conferência\" para gerar o arquivo e enviar manualmente."); return; }
+    if(pedidos.length===0){ alert("Não há pedidos para enviar."); return; }
+    const {manifest, semId} = montarManifestoConferencia();
+    if(semId>0){
+      const continuar = confirm(`${semId} de ${manifest.paletes.length} palete(s) não têm ID físico identificado e não poderão ser conferidos por leitura no coletor. Deseja enviar mesmo assim?`);
+      if(!continuar) return;
+    }
+    const queueId = "q_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
+    const estadoInicial = { paletes:{}, divergencias:[], liberado:false };
+    manifest.paletes.forEach((p,idx)=>{ estadoInicial.paletes[chaveDoPalete(p,idx)] = {status:"pendente"}; });
+
+    const btn = $("btn-enviar-nuvem");
+    const original = btn.textContent;
+    btn.textContent = "Enviando..."; btn.disabled = true;
+    try{
+      await fbDb.collection("cargas").doc(queueId).set({
+        manifest: manifest,
+        estado: estadoInicial,
+        importadoEm: new Date().toISOString()
+      });
+      alert(`Carga enviada para a nuvem com sucesso! Já está disponível na Fila de Cargas de qualquer operador com o app de Conferência aberto.`);
+    }catch(err){
+      alert("Erro ao enviar para a nuvem: " + err.message + "\n\nVocê ainda pode usar \"📦 Exportar p/ Conferência\" para gerar o arquivo manualmente.");
+    }finally{
+      btn.textContent = original; btn.disabled = false;
+    }
+  }
+  $("btn-enviar-nuvem").onclick = enviarCargaParaNuvem;
+
+  async function salvarCarga(){
+    if(pedidos.length===0){ alert("Não há pedidos para salvar. Adicione ao menos um pedido primeiro."); return; }
+    const truck = getTruck();
+    const numero = proximoNumeroSequencial();
+    const nomeDigitado = $("carga-nome").value.trim() || "carga";
+    const nomeArquivoBase = nomeDigitado.replace(/[^\w\-. ]/g,"").trim().replace(/\s+/g,"_") || "carga";
+    const numeroStr = String(numero).padStart(3,"0");
+    const nomeArquivo = `${numeroStr}_${nomeArquivoBase}.json`;
+
+    const totalPeso = pedidos.reduce((s,p)=>s+p.pesoBruto,0);
+    const totalPallets = pedidos.reduce((s,p)=>s+p.qtd,0);
+
+    const data = {
+      formato: "gdm-carga-3d",
+      versao: 1,
+      numero, nomeCarga: nomeDigitado,
+      salvoEm: new Date().toISOString(),
+      veiculoPreset: $("veiculo-preset").value,
+      truck,
+      doc: {
+        data: $("doc-data").value,
+        transportadora: $("doc-transp").value,
+        motorista: $("doc-motorista").value,
+        placa: $("doc-placa").value.toUpperCase(),
+        obs: $("doc-obs").value
+      },
+      pedidos: pedidos.map(p=>({
+        pedido:p.pedido, seq:p.seq||"", cliente:p.cliente, clienteCod:p.clienteCod||"", uf:p.uf||"", cidade:p.cidade||"", itemCod:p.itemCod, itemDesc:p.itemDesc,
+        qtd:p.qtd, pesoBruto:p.pesoBruto, pesoLiq:p.pesoLiq, w:p.w, d:p.d, h:p.h, obs:p.obs||"",
+        taraPallet:p.taraPallet, pesoBrutoCom:p.pesoBrutoCom, pesoTaraCom:p.pesoTaraCom, qtdeCom:p.qtdeCom, bobinasTotal:p.bobinasTotal,
+        travada: !!p.travada, ordemManual: p.ordemManual ?? null, paletesRomaneio: p.paletesRomaneio || undefined
+      }))
+    };
+    const json = JSON.stringify(data, null, 2);
+
+    // Usa o seletor de pasta do sistema quando o navegador suporta (Chrome/Edge no
+    // computador); se não suportar (ou o usuário cancelar), cai para o download padrão
+    // direto na pasta de Downloads.
+    if(window.showSaveFilePicker){
+      try{
+        const handle = await window.showSaveFilePicker({
+          suggestedName: nomeArquivo,
+          types: [{ description: "Arquivo de Carga (.json)", accept: {"application/json": [".json"]} }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(json);
+        await writable.close();
+
+        registrarNoHistorico({
+          numero, nomeCarga: nomeDigitado, arquivo: handle.name || nomeArquivo, salvoEm: data.salvoEm,
+          veiculo: $("veiculo-preset").selectedOptions[0].textContent,
+          truck: data.truck, doc: data.doc,
+          totalPedidos: pedidos.length, totalPallets, totalPeso: Math.round(totalPeso*100)/100,
+          pedidos: data.pedidos
+        });
+        alert(`Carga salva como "${handle.name || nomeArquivo}".`);
+        return;
+      }catch(err){
+        if(err.name==="AbortError") return; // usuário cancelou o seletor, não faz nada
+        console.warn("showSaveFilePicker falhou, usando download padrão:", err);
+      }
+    }
+
+    const blob = new Blob([json], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nomeArquivo;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    registrarNoHistorico({
+      numero, nomeCarga: nomeDigitado, arquivo: nomeArquivo, salvoEm: data.salvoEm,
+      veiculo: $("veiculo-preset").selectedOptions[0].textContent,
+      truck: data.truck, doc: data.doc,
+      totalPedidos: pedidos.length, totalPallets, totalPeso: Math.round(totalPeso*100)/100,
+      pedidos: data.pedidos
+    });
+
+    alert(`Carga salva como "${nomeArquivo}". Verifique a pasta de downloads do seu navegador.`);
+  }
+
+  function carregarCarga(file){
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const data = JSON.parse(reader.result);
+        if(!data || !Array.isArray(data.pedidos)) throw new Error("Arquivo não parece ser uma carga salva por este aplicativo.");
+
+        if(data.truck){
+          $("t-comp").value = data.truck.comprimento ?? $("t-comp").value;
+          $("t-larg").value = data.truck.largura ?? $("t-larg").value;
+          $("t-alt").value = data.truck.altura ?? $("t-alt").value;
+          $("t-capac").value = data.truck.capacidadePeso ?? $("t-capac").value;
+        }
+        if(data.veiculoPreset) $("veiculo-preset").value = data.veiculoPreset;
+        if(data.doc){
+          $("doc-data").value = data.doc.data || "";
+          $("doc-transp").value = data.doc.transportadora || "";
+          $("doc-motorista").value = data.doc.motorista || "";
+          $("doc-placa").value = data.doc.placa || "";
+          $("doc-obs").value = data.doc.obs || "";
+        }
+        if(data.nomeCarga) $("carga-nome").value = data.nomeCarga;
+
+        pedidos = data.pedidos.map(p=> Object.assign({id:nextId++, color: COLORS[(nextId-1)%COLORS.length]}, p));
+        clearPalletMeshes();
+        lastPack = null;
+        remontagensSalvas = []; rotacoesSalvas = {}; bloqueiosSalvos = new Set(); lastPackTruckDims = null;
+        pedidos.forEach(p=> delete p.ordemCarga);
+        renderPedidosList();
+        renderStats(null);
+        atualizarSeletorPaleteIndividual();
+    atualizarSeletoresRemontagem();
+        alert(`Carga carregada: ${pedidos.length} pedido(s). Clique em "Montar Carga 3D" para remontar a visualização.`);
+      } catch(err){
+        alert("Não foi possível carregar este arquivo: " + err.message);
+      }
+    };
+    reader.onerror = ()=> alert("Erro ao ler o arquivo.");
+    reader.readAsText(file, "utf-8");
+  }
+
+  $("btn-salvar-carga").onclick = salvarCarga;
+  $("btn-carregar-carga").onclick = ()=> $("load-file-input").click();
+  $("load-file-input").onchange = ()=>{
+    const file = $("load-file-input").files[0];
+    $("load-file-input").value = "";
+    if(file) carregarCarga(file);
+  };
+
+  // Limpa tudo (pedidos, montagem 3D, nome da carga e dados do documento) para começar
+  // uma carga do zero, sem precisar recarregar a página.
+  function novaCarga(){
+    if(pedidos.length>0 && !confirm("Isso apaga todos os pedidos cadastrados, a montagem 3D e os campos de transportadora/motorista/observação desta tela. Não afeta cargas já salvas em arquivo ou na nuvem. Continuar?")){
+      return;
+    }
+    pedidos = [];
+    clearPalletMeshes();
+    lastPack = null;
+    remontagensSalvas = []; rotacoesSalvas = {}; bloqueiosSalvos = new Set(); lastPackTruckDims = null;
+    editingId = null;
+    cancelEdit();
+    renderPedidosList();
+    renderStats(null);
+    atualizarSeletorPaleteIndividual();
+    atualizarSeletoresRemontagem();
+    updateDimOverlay(getTruck(), null);
+    renderLegend();
+
+    $("carga-nome").value = "";
+    $("doc-transp").value = "";
+    $("doc-motorista").value = "";
+    $("doc-placa").value = "";
+    $("doc-obs").value = "";
+    const hoje = new Date();
+    $("doc-data").value = `${String(hoje.getDate()).padStart(2,"0")}/${String(hoje.getMonth()+1).padStart(2,"0")}/${hoje.getFullYear()}`;
+
+    if($("view-romaneio").style.display!=="none") switchTab("montagem");
+  }
+  $("btn-nova-carga").onclick = novaCarga;
+
+  function renderStats(result){
+    const truck = getTruck();
+    if(!result){
+      $("stat-peso").textContent = `0 / ${fmt(truck.capacidadePeso)} kg`;
+      $("bar-peso").style.width = "0%";
+      $("stat-vol").textContent = "0%";
+      $("bar-vol").style.width = "0%";
+      $("stat-pallets").textContent = "0 / 0";
+      $("warn-area").innerHTML = "";
+      return;
+    }
+    const {pesoTotal, areaTruck, areaOcupada, capacidadePeso} = result.totals;
+    const pesoPct = capacidadePeso>0 ? Math.min(100, (pesoTotal/capacidadePeso)*100) : 0;
+    const areaPct = areaTruck>0 ? Math.min(100, (areaOcupada/areaTruck)*100) : 0;
+
+    $("stat-peso").textContent = `${fmt(pesoTotal)} / ${fmt(capacidadePeso)} kg`;
+    $("bar-peso").style.width = pesoPct+"%";
+    $("bar-peso").style.background = pesoTotal>capacidadePeso ? "var(--red)" : (pesoPct>85?"var(--amber)":"var(--green)");
+
+    $("stat-vol").textContent = areaPct.toFixed(1)+"%";
+    $("bar-vol").style.width = areaPct+"%";
+    $("bar-vol").style.background = areaPct>85?"var(--amber)":"var(--cyan)";
+
+    const totalUnits = result.placed.length + result.unplaced.length;
+    $("stat-pallets").textContent = `${result.placed.length} / ${totalUnits}`;
+
+    let warn = "";
+    if(pesoTotal > capacidadePeso){
+      warn += `<div class="warn-banner">⚠ Peso total (${fmt(pesoTotal)} kg) excede a capacidade do veículo (${fmt(capacidadePeso)} kg).</div>`;
+    }
+    if(result.unplaced.length>0){
+      warn += `<div class="warn-banner">⚠ ${result.unplaced.length} palete(s) não couberam no espaço do veículo com as dimensões atuais.</div>`;
+    }
+    $("warn-area").innerHTML = warn;
+  }
+
+  function renderLegend(){
+    const el = $("legend");
+    el.innerHTML = pedidos.map(p=>`
+      <div class="legend-item"><span class="legend-swatch" style="background:${p.color}"></span>#${escapeHtml(p.pedido)}</div>
+    `).join("");
+  }
+
+  /* ---------------- ROMANEIO (PRINT) ---------------- */
+  // Lista TODOS os paletes individuais da carga (um por linha), na ordem de carregamento,
+  // para conferência física no ato do carregamento (marcar com caneta cada palete carregado).
+  // Retorna um texto legível indicando em cima de qual palete um palete remontado foi
+  // colocado (usando o ID físico do destino, se tiver, senão pedido-seq/romaneio) — usado
+  // tanto no romaneio impresso quanto no manifesto exportado para a Conferência.
+  function labelDestinoRemontagem(u){
+    if(u.empilhadoSobre==null || !lastPack) return null;
+    const destino = lastPack.placed.find(x=>x.uid===u.empilhadoSobre);
+    if(!destino) return null;
+    return `${destino.pedido}${destino.seq?'-'+destino.seq:''}${destino.romaneio!=null?' #'+destino.romaneio:''}`;
+  }
+
+  function renderChecklistSection(){
+    if(!lastPack || !lastPack.placed || lastPack.placed.length===0){
+      return '<div class="doc-warn">⚠ Monte a carga em 3D antes de imprimir para gerar o checklist de conferência de cada palete.</div>';
+    }
+    const ordenados = lastPack.placed.slice().sort((a,b)=> (a.x-b.x) || (a.z-b.z));
+
+    // Agrupa por pedido-seq mantendo a ordem física de carregamento entre os grupos e
+    // dentro de cada grupo; logo depois dos paletes de cada pedido entra uma linha de
+    // Total com a soma de peso bruto, peso líquido e bobinas, embaixo dessas colunas.
+    const grupos = [];
+    const indexPorChave = new Map();
+    ordenados.forEach(u=>{
+      const chave = u.pedido + (u.seq?('-'+u.seq):'');
+      if(!indexPorChave.has(chave)){
+        indexPorChave.set(chave, grupos.length);
+        grupos.push({chave, pedido:u.pedido, seq:u.seq, itens:[]});
+      }
+      grupos[indexPorChave.get(chave)].itens.push(u);
+    });
+
+    let contador = 0;
+    const blocos = grupos.map(g=>{
+      const linhasGrupo = g.itens.map(u=>{
+        contador++;
+        const remontadoLabel = labelDestinoRemontagem(u);
+        const obsHtml = [
+          u.obs ? `<span class="obs-tag">${escapeHtml(u.obs)}</span>` : '',
+          remontadoLabel ? `<span class="obs-tag obs-remontado">🔺 Remontado sobre ${escapeHtml(remontadoLabel)}</span>` : ''
+        ].filter(Boolean).join(" ");
+        return `<tr>
+          <td>${contador}</td>
+          <td class="chk">☐</td>
+          <td>${u.idPalete?`<span class="pallet-id">${escapeHtml(u.idPalete)}</span>`:'—'}</td>
+          <td>${(u.romaneio!=null)?escapeHtml(String(u.romaneio)):'—'}</td>
+          <td><span class="swatch" style="background:${u.color}"></span>${escapeHtml(u.pedido)}${u.seq?'-'+escapeHtml(u.seq):''}</td>
+          <td>${escapeHtml(u.cliente||'')}</td>
+          <td>${u.local?escapeHtml(u.local):'<span class="sem-local">Sem localização</span>'}</td>
+          <td>${u.w.toFixed(2)}×${u.d.toFixed(2)}×${u.h.toFixed(2)} m</td>
+          <td>${fmt(u.peso)}</td>
+          <td>${fmt(u.pesoLiq)}</td>
+          <td>${u.bobinas?escapeHtml(String(u.bobinas)):'—'}</td>
+          <td>${obsHtml}</td>
+        </tr>`;
+      }).join("");
+      const totalBruto = g.itens.reduce((s,u)=>s+u.peso,0);
+      const totalLiq = g.itens.reduce((s,u)=>s+u.pesoLiq,0);
+      const totalBobinas = g.itens.reduce((s,u)=>s+(parseInt(u.bobinas)||0),0);
+      const linhaTotal = `<tr class="grp-total">
+        <td colspan="8" style="text-align:right;font-size:11px;font-family:inherit;">Total ${escapeHtml(g.pedido)}${g.seq?'-'+escapeHtml(g.seq):''} (${g.itens.length} pal.)</td>
+        <td style="text-align:right;font-size:11px;font-family:inherit;">${fmt(totalBruto)}</td>
+        <td style="text-align:right;font-size:11px;font-family:inherit;">${fmt(totalLiq)}</td>
+        <td style="text-align:center;font-size:11px;font-family:inherit;">${totalBobinas||'—'}</td>
+        <td style="font-size:11px;font-family:inherit;"></td>
+      </tr>`;
+      return linhasGrupo + linhaTotal;
+    }).join("");
+
+    const unplacedWarn = lastPack.unplaced && lastPack.unplaced.length>0
+      ? `<div class="doc-warn">⚠ ${lastPack.unplaced.length} palete(s) não couberam no veículo com as dimensões atuais e NÃO estão nesta lista.</div>` : '';
+
+    return `
+      <div class="rom-checklist-section">
+        <h3>Checklist de Paletes — conferir no ato do carregamento</h3>
+        ${unplacedWarn}
+        <table class="rom-table checklist">
+          <thead><tr>
+            <th>#</th><th>✓</th><th>ID do Palete</th><th>Nº Romaneio</th><th>Pedido-Seq</th><th>Cliente</th><th>Localização</th><th>Dimensões</th><th>P.Bruto (kg)</th><th>P.Líquido (kg)</th><th>Bobinas</th><th>Obs.</th>
+          </tr></thead>
+          <tbody>${blocos}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderRomaneio(){
+    const truck = getTruck();
+    const veic = $("veiculo-preset").selectedOptions[0].textContent;
+    const totalPeso = pedidos.reduce((s,p)=>s+p.pesoBruto,0);
+    const totalPesoLiq = pedidos.reduce((s,p)=>s+p.pesoLiq,0);
+    const totalPallets = pedidos.reduce((s,p)=>s+p.qtd,0);
+    const totalTaraPallet = pedidos.reduce((s,p)=>s+(p.taraPallet||0),0);
+    const totalPesoBrutoCom = pedidos.reduce((s,p)=>s+(p.pesoBrutoCom||0),0);
+    const totalPesoTaraCom = pedidos.reduce((s,p)=>s+(p.pesoTaraCom||0),0);
+    const totalQtdeCom = pedidos.reduce((s,p)=>s+(p.qtdeCom||0),0);
+    const totalBobinas = pedidos.reduce((s,p)=>s+(p.bobinasTotal||0),0);
+    const temOrdem = pedidos.some(p=>p.ordemCarga);
+
+    // Ordena pelo número de carregamento (1º a carregar primeiro) quando a carga já foi
+    // montada; senão mantém a ordem de cadastro.
+    const pedidosOrdenados = pedidos.slice().sort((a,b)=>{
+      const oa = a.ordemCarga || Infinity, ob = b.ordemCarga || Infinity;
+      return oa - ob;
+    });
+
+    const fmtDim = n => (n||0).toFixed(2).replace('.', ',');
+    const fmt2 = n => (n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+
+    // Gera o bloco de um pedido no mesmo formato do relatório original do sistema:
+    // cabeçalho com Cliente/Pedido/Produto, tabela de paletes (sem coluna de ID) e uma
+    // linha de Total somando os campos numéricos. Se o pedido não tiver o detalhamento
+    // por palete (ex.: cadastrado manualmente), mostra uma única linha com os totais dele.
+    function renderPedidoDetalhado(p){
+      // Pega uma dimensão representativa (a mais comum entre os paletes do pedido) só
+      // para mostrar na coluna "Pallet" da linha de total — não lista mais palete por
+      // palete, só o cabeçalho do pedido e o totalizador com todas as colunas.
+      const temDetalhe = p.paletesRomaneio && p.paletesRomaneio.length>0;
+      const dimRef = temDetalhe ? p.paletesRomaneio[0] : p;
+      const unidadeRef = temDetalhe ? (p.paletesRomaneio[0].unidadeBobina||'bobinas') : 'bobinas';
+
+      return `
+        <div class="rom-pedido-block">
+          <div class="rom-pedido-header">
+            ${p.ordemCarga?`<span class="ordem-tag">${p.ordemCarga}º a carregar</span>`:''}
+            <div><b>Cliente:</b> ${escapeHtml(p.clienteCod||'')} ${escapeHtml(p.cliente)}${p.cidade?` (${escapeHtml(p.cidade)}${p.uf?'/'+escapeHtml(p.uf):''})`:''}</div>
+            <div><b>Pedido:</b> ${escapeHtml(p.pedido)}${p.seq?'.'+escapeHtml(p.seq):''}</div>
+            <div><b>Produto:</b> ${escapeHtml(p.itemCod)} - ${escapeHtml(p.itemDesc)}</div>
+          </div>
+          <table class="rom-table rom-pallet-table">
+            <thead><tr>
+              <th>O.P.</th><th>Sequência Romaneio</th><th>Local</th><th>Peso Bruto Tot.</th><th>Tara Pallet</th>
+              <th>Peso Bruto Com.</th><th>Peso Tara Com.</th><th>Peso Líq. Com.</th><th>Qtde Com.</th><th>Vol.</th><th>Pallet</th>
+            </tr></thead>
+            <tbody>
+              <tr class="grp-total">
+                <td colspan="3">Total (${p.qtd} paletes)</td>
+                <td>${fmt2(p.pesoBruto)}</td>
+                <td>${fmt2(p.taraPallet)}</td>
+                <td>${fmt2(p.pesoBrutoCom)}</td>
+                <td>${fmt2(p.pesoTaraCom)}</td>
+                <td>${fmt2(p.pesoLiq)}</td>
+                <td>${fmt2(p.qtdeCom)}</td>
+                <td>${p.bobinasTotal||''}</td>
+                <td>Pallets ${fmtDim(dimRef.w)} x ${fmtDim(dimRef.d)} x ${fmtDim(dimRef.h)} (${unidadeRef})</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    const blocosPedidos = pedidosOrdenados.map(renderPedidoDetalhado).join("");
+
+    $("romaneio-sheet").innerHTML = `
+      <h2>Romaneio de Carregamento</h2>
+      <div class="doc-sub">GDM Indústria e Comércio de Plásticos LTDA · gerado ${new Date().toLocaleString('pt-BR')}</div>
+      ${!temOrdem ? '<div class="doc-warn">⚠ Monte a carga em 3D antes de imprimir para calcular a ordem de carregamento (qual pedido entra primeiro no caminhão).</div>' : ''}
+      <div class="rom-header">
+        <div class="f"><div class="l">Veículo</div><div class="v">${escapeHtml(veic)}</div></div>
+        <div class="f"><div class="l">Dimensões internas</div><div class="v">${truck.comprimento.toFixed(2)} × ${truck.largura.toFixed(2)} × ${truck.altura.toFixed(2)} m</div></div>
+        <div class="f"><div class="l">Capacidade</div><div class="v">${fmt(truck.capacidadePeso)} kg</div></div>
+        <div class="f"><div class="l">Data</div><div class="v">${escapeHtml($("doc-data").value)}</div></div>
+        <div class="f"><div class="l">Transportadora</div><div class="v">${escapeHtml($("doc-transp").value)}</div></div>
+        <div class="f"><div class="l">Motorista</div><div class="v">${escapeHtml($("doc-motorista").value)}</div></div>
+        <div class="f"><div class="l">Placa</div><div class="v">${escapeHtml($("doc-placa").value)}</div></div>
+        <div class="f" style="grid-column:1/-1;"><div class="l">Observação</div><div class="v">${escapeHtml($("doc-obs").value)}</div></div>
+      </div>
+      ${blocosPedidos || '<div class="doc-warn">Nenhum pedido cadastrado.</div>'}
+      ${pedidos.length>0 ? `
+      <div class="rom-pedido-block rom-total-geral">
+        <div class="rom-pedido-header">
+          <b>Total Geral da Carga</b> — ${pedidos.length} pedido(s)
+        </div>
+        <table class="rom-table rom-pallet-table">
+          <thead><tr>
+            <th>O.P.</th><th>Sequência Romaneio</th><th>Local</th><th>Peso Bruto Tot.</th><th>Tara Pallet</th>
+            <th>Peso Bruto Com.</th><th>Peso Tara Com.</th><th>Peso Líq. Com.</th><th>Qtde Com.</th><th>Vol.</th><th>Pallet</th>
+          </tr></thead>
+          <tbody>
+            <tr class="grp-total">
+              <td colspan="3">Total (${totalPallets} paletes)</td>
+              <td>${fmt2(totalPeso)}</td>
+              <td>${fmt2(totalTaraPallet)}</td>
+              <td>${fmt2(totalPesoBrutoCom)}</td>
+              <td>${fmt2(totalPesoTaraCom)}</td>
+              <td>${fmt2(totalPesoLiq)}</td>
+              <td>${fmt2(totalQtdeCom)}</td>
+              <td>${totalBobinas}</td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>` : ''}
+      ${renderChecklistSection()}
+      ${temOrdem ? `
+      <div class="rom-3d-section">
+        <h3>Mapa de Carga 3D</h3>
+        <div class="rom-3d-images">
+          <div class="rom-3d-item">
+            <img src="${captureSnapshot('top')}" alt="Vista superior da carga">
+            <div class="rom-3d-caption">Vista superior</div>
+          </div>
+          <div class="rom-3d-item">
+            <img src="${captureSnapshot('persp')}" alt="Vista em perspectiva da carga">
+            <div class="rom-3d-caption">Vista em perspectiva</div>
+          </div>
+        </div>
+        <div class="rom-note">Etiquetas nos paletes mostram Pedido-Seq (ex.: 100859-1). Ordem de carregamento: 1º = carrega primeiro (mais perto da cabine), maior número carrega por último (mais perto da porta).</div>
+      </div>` : ''}
+    `;
+  }
+  $("btn-print").onclick = ()=> window.print();
+
+  /* ---------------- INIT ---------------- */
+  // Data sempre parte do dia de hoje, mas continua editável.
+  (function preencherDataHoje(){
+    const hoje = new Date();
+    const dd = String(hoje.getDate()).padStart(2,"0");
+    const mm = String(hoje.getMonth()+1).padStart(2,"0");
+    const yyyy = hoje.getFullYear();
+    $("doc-data").value = `${dd}/${mm}/${yyyy}`;
+  })();
+
+  renderPedidosList();
+  initScene();
+  buildTruckMesh(getTruck());
+
+})();
+</script>
+</body>
+</html>
