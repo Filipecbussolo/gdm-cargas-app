@@ -269,7 +269,7 @@
     <div class="brand">
       <span class="tag">GDM</span>
       <h1>Conferência de Carregamento</h1>
-      <span class="app-version" title="Versão deste aplicativo">v2026.08.03</span>
+      <span class="app-version" title="Versão deste aplicativo">v2026.08.07</span>
       <span class="sub">conferência por ID de palete · coletor de dados</span>
       <span class="sub" id="fb-status" style="margin-left:10px;"></span>
     </div>
@@ -615,7 +615,7 @@
       // Ignora documentos corrompidos/incompletos (ex.: campos apagados manualmente no
       // Firestore Console em vez do documento inteiro) — em vez de travar a fila toda,
       // mostra só as cargas válidas e avisa quantas foram ignoradas.
-      const validas = todos.filter(f=> f.manifest && Array.isArray(f.manifest.paletes) && f.estado && f.estado.paletes);
+      const validas = todos.filter(f=> f.manifest && Array.isArray(f.manifest.paletes) && f.estado && f.estado.paletes && f.statusCarga!=="faturamento");
       const ignoradas = todos.length - validas.length;
       filaCargas = validas;
       atualizarStatusNuvem(
