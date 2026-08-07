@@ -183,14 +183,17 @@
   #pedido-form input:focus{outline:1px solid var(--amber);border-color:var(--amber);}
   #pedido-form .dims{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
   #paletes-individuais-lista{max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px;background:var(--panel-2);}
-  .palete-individual-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap;}
+  .palete-individual-row{display:flex;align-items:center;gap:4px;margin-bottom:6px;flex-wrap:nowrap;}
   .palete-individual-row:last-child{margin-bottom:0;}
-  .palete-individual-row .pir-label{font-size:9.5px;color:var(--dim);font-family:var(--mono);width:100%;margin-bottom:2px;}
-  .palete-individual-row input{
-    width:56px;flex-shrink:0;background:var(--panel);border:1px solid var(--border);color:var(--text);
-    padding:5px 4px;border-radius:4px;font-size:11px;text-align:center;
+  .palete-individual-row .pir-label{
+    font-size:9px;color:var(--dim);font-family:var(--mono);flex:1 1 auto;min-width:0;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   }
-  .palete-individual-row .pir-x{color:var(--dim);font-size:10px;flex-shrink:0;}
+  #pedido-form .palete-individual-row input{
+    width:36px;flex-shrink:0;background:var(--panel);border:1px solid var(--border);color:var(--text);
+    padding:4px 2px;border-radius:4px;font-size:10.5px;text-align:center;
+  }
+  .palete-individual-row .pir-x{color:var(--dim);font-size:9.5px;flex-shrink:0;}
   #add-btn{
     grid-column:1/-1;background:var(--amber);color:#1a1200;border:none;border-radius:4px;
     padding:9px;font-weight:700;font-size:12.5px;cursor:pointer;letter-spacing:.02em;margin-top:2px;
@@ -499,7 +502,7 @@
     <div class="brand">
       <span class="tag">GDM</span>
       <h1>Montagem de Carga 3D</h1>
-      <span class="app-version" title="Versão deste aplicativo">v2026.08.16</span>
+      <span class="app-version" title="Versão deste aplicativo">v2026.08.18</span>
     </div>
     <div id="navbar-carga">
       <label for="carga-nome">Nome da Carga</label>
@@ -941,7 +944,7 @@
     wrap.style.display = "block";
     lista.innerHTML = p.paletesRomaneio.map((e,i)=>`
       <div class="palete-individual-row">
-        <span class="pir-label">${e.romaneio!=null?'Rom.'+e.romaneio:'#'+(i+1)}${e.id?' · '+escapeHtml(e.id):''}</span>
+        <span class="pir-label" title="${escapeHtml((e.romaneio!=null?'Rom.'+e.romaneio:'#'+(i+1))+(e.id?' · '+e.id:''))}">${e.romaneio!=null?'Rom.'+e.romaneio:'#'+(i+1)}${e.id?' · '+escapeHtml(e.id):''}</span>
         <input type="number" step="0.01" class="pir-w" data-idx="${i}" value="${e.w!=null?e.w:p.w}" title="Largura (m)">
         <span class="pir-x">×</span>
         <input type="number" step="0.01" class="pir-d" data-idx="${i}" value="${e.d!=null?e.d:p.d}" title="Profundidade (m)">
