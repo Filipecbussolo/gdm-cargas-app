@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Clínica &mdash; Agenda, Financeiro &amp; Clientes</title>
+<style>
+:root{
+  --bg:#f7f5f0;
+  --surface:#ffffff;
+  --surface-2:#f1ede4;
+  --border:#e6e0d3;
+  --text:#2c2a25;
+  --dim:#83796a;
+  --dim-2:#a89f8f;
+  --primary:#6f8f7c;
+  --primary-dark:#54705f;
+  --primary-light:#e6edea;
+  --accent:#c98a5e;
+  --accent-light:#f6e9de;
+  --danger:#c1584a;
+  --danger-light:#f7e6e3;
+  --warning:#c99a3a;
+  --warning-light:#f7edda;
+  --success:#5f9a72;
+  --success-light:#e6f0e9;
+  --info:#5c85ab;
+  --info-light:#e6edf3;
+  --radius:12px;
+  --radius-sm:8px;
+  --shadow:0 1px 2px rgba(40,35,20,.04), 0 4px 16px rgba(40,35,20,.06);
+  --shadow-lg:0 8px 30px rgba(40,35,20,.14);
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:'SF Mono','Cascadia Code','Roboto Mono',Consolas,monospace;
+  --sidebar-w:230px;
+}
+:root[data-theme="dark"]{
+  --bg:#181a17;
+  --surface:#212420;
+  --surface-2:#282b26;
+  --border:#383c35;
+  --text:#eeece5;
+  --dim:#a09884;
+  --dim-2:#75705f;
+  --primary:#89ab97;
+  --primary-dark:#a3c2af;
+  --primary-light:#293630;
+  --accent:#e0a878;
+  --accent-light:#3a2f24;
+  --danger:#e0796a;
+  --danger-light:#3a2521;
+  --warning:#e0b95f;
+  --warning-light:#3a301d;
+  --success:#7fc494;
+  --success-light:#22332a;
+  --info:#7ea6cc;
+  --info-light:#212e3a;
+  --shadow:0 1px 2px rgba(0,0,0,.2), 0 4px 16px rgba(0,0,0,.28);
+  --shadow-lg:0 8px 30px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);}
+body{font-size:14px;line-height:1.45;}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit;}
+a{color:var(--primary-dark);}
+h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-.01em;}
+.hidden{display:none!important;}
+svg.icon{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-thumb{background:var(--dim-2);border-radius:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+
+/* ===== LOCK SCREEN ===== */
+#lock-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:18px;}
+#lock-screen .lock-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:32px;width:280px;text-align:center;box-shadow:var(--shadow);}
+#lock-screen .lock-logo{font-size:34px;margin-bottom:6px;}
+#lock-screen h2{font-size:16px;margin-bottom:4px;}
+#lock-screen p{color:var(--dim);font-size:12.5px;margin:0 0 16px;}
+#lock-pin{width:100%;padding:11px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-2);text-align:center;font-size:20px;letter-spacing:6px;margin-bottom:10px;}
+#lock-error{color:var(--danger);font-size:12px;height:16px;margin-bottom:6px;}
+
+/* ===== APP LAYOUT ===== */
+#app{display:flex;height:100vh;overflow:hidden;}
+#sidebar{
+  width:var(--sidebar-w);flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;transition:transform .2s ease;z-index:60;
+}
+.brand{display:flex;align-items:center;gap:10px;padding:18px 18px 14px;}
+.brand .logo-dot{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;flex-shrink:0;}
+.brand .name{font-size:14.5px;font-weight:700;line-height:1.2;}
+.brand .sub{font-size:10.5px;color:var(--dim);font-family:var(--mono);}
+nav#nav-list{flex:1;overflow-y:auto;padding:6px 10px;}
+.nav-section-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim-2);padding:14px 10px 6px;}
+.nav-item{
+  display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:var(--radius-sm);
+  color:var(--dim);cursor:pointer;font-weight:600;font-size:13px;margin-bottom:2px;border:none;background:transparent;width:100%;text-align:left;
+}
+.nav-item:hover{background:var(--surface-2);color:var(--text);}
+.nav-item.active{background:var(--primary-light);color:var(--primary-dark);}
+.nav-item .badge-count{margin-left:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:700;border-radius:20px;padding:1px 6px;min-width:16px;text-align:center;}
+#sidebar-footer{padding:12px;border-top:1px solid var(--border);display:flex;gap:8px;}
+.icon-btn{
+  display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:var(--radius-sm);
+  background:var(--surface-2);border:1px solid var(--border);color:var(--dim);cursor:pointer;flex-shrink:0;
+}
+.icon-btn:hover{color:var(--text);border-color:var(--dim-2);}
+
+#main-col{flex:1;display:flex;flex-direction:column;min-width:0;}
+#topbar{
+  display:flex;align-items:center;justify-content:space-between;padding:12px 22px;
+  background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;gap:14px;
+}
+#topbar h1{font-size:18px;}
+#topbar .topbar-right{display:flex;align-items:center;gap:10px;}
+#hamburger{display:none;}
+.today-pill{font-size:11.5px;color:var(--dim);font-family:var(--mono);background:var(--surface-2);padding:5px 10px;border-radius:20px;}
+#main-content{flex:1;overflow-y:auto;padding:22px;}
+
+/* ===== BUTTONS ===== */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:var(--radius-sm);border:1px solid transparent;
+  font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;line-height:1;
+}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-dark);}
+.btn-outline{background:transparent;border-color:var(--border);color:var(--text);}
+.btn-outline:hover{border-color:var(--dim-2);}
+.btn-danger{background:var(--danger-light);color:var(--danger);}
+.btn-danger:hover{background:var(--danger);color:#fff;}
+.btn-sm{padding:6px 10px;font-size:12px;border-radius:7px;}
+.btn-ghost{background:transparent;border:none;color:var(--dim);padding:6px 8px;border-radius:7px;}
+.btn-ghost:hover{background:var(--surface-2);color:var(--text);}
+.btn-icon{padding:8px;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+
+/* ===== CARDS / GRID ===== */
+.grid{display:grid;gap:16px;}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+.grid-2{grid-template-columns:repeat(2,1fr);}
+@media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr);}.grid-3{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:640px){.grid-4,.grid-3,.grid-2{grid-template-columns:1fr;}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);}
+.stat-card{display:flex;flex-direction:column;gap:6px;}
+.stat-card .stat-top{display:flex;align-items:center;justify-content:space-between;}
+.stat-card .stat-label{font-size:12px;color:var(--dim);font-weight:600;}
+.stat-card .stat-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.stat-card .stat-value{font-size:24px;font-weight:800;letter-spacing:-.02em;}
+.stat-card .stat-sub{font-size:11.5px;color:var(--dim-2);}
+.section-title{display:flex;align-items:center;justify-content:space-between;margin:26px 0 12px;}
+.section-title:first-child{margin-top:0;}
+.section-title h3{font-size:14.5px;}
+.section-title .link{font-size:12.5px;color:var(--primary-dark);cursor:pointer;font-weight:600;}
+
+/* ===== TABLE ===== */
+.table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:600px;}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);padding:11px 14px;background:var(--surface-2);border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--surface-2);}
+.empty-row td{text-align:center;color:var(--dim);padding:34px;}
+
+/* ===== BADGES ===== */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;}
+.badge-agendado{background:var(--info-light);color:var(--info);}
+.badge-confirmado{background:var(--primary-light);color:var(--primary-dark);}
+.badge-em_atendimento{background:var(--warning-light);color:var(--warning);}
+.badge-concluido{background:var(--success-light);color:var(--success);}
+.badge-cancelado{background:var(--surface-2);color:var(--dim);}
+.badge-faltou{background:var(--danger-light);color:var(--danger);}
+.badge-pago{background:var(--success-light);color:var(--success);}
+.badge-pendente{background:var(--warning-light);color:var(--warning);}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block;}
+
+/* ===== FORMS ===== */
+.field{margin-bottom:13px;}
+.field label{display:block;font-size:12px;font-weight:700;color:var(--dim);margin-bottom:5px;}
+.field input,.field select,.field textarea{
+  width:100%;padding:9px 11px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);
+}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--primary);outline-offset:-1px;}
+.field textarea{resize:vertical;min-height:64px;}
+.field-row{display:flex;gap:12px;}
+.field-row>.field{flex:1;}
+.field-hint{font-size:11px;color:var(--dim-2);margin-top:4px;}
+.checkline{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;}
+.checkline input{width:auto;}
+.search-input{position:relative;flex:1;max-width:320px;}
+.search-input svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--dim-2);}
+.search-input input{width:100%;padding:9px 11px 9px 34px;border-radius:20px;border:1px solid var(--border);background:var(--surface);}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+.toolbar .spacer{flex:1;}
+.chip-select{display:flex;gap:6px;background:var(--surface-2);padding:3px;border-radius:20px;flex-wrap:wrap;}
+.chip-select button{border:none;background:transparent;padding:6px 13px;border-radius:20px;font-weight:700;font-size:12px;color:var(--dim);cursor:pointer;}
+.chip-select button.active{background:var(--surface);color:var(--primary-dark);box-shadow:var(--shadow);}
+.pill-filter{padding:7px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:12.5px;font-weight:600;cursor:pointer;color:var(--dim);}
+.pill-filter.active{background:var(--primary);border-color:var(--primary);color:#fff;}
+
+/* ===== MODAL ===== */
+#modal-root{position:fixed;inset:0;z-index:200;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px;}
+.modal-backdrop{position:fixed;inset:0;background:rgba(20,18,12,.45);}
+:root[data-theme="dark"] .modal-backdrop{background:rgba(0,0,0,.6);}
+.modal-box{position:relative;background:var(--surface);border-radius:var(--radius);width:100%;max-width:520px;box-shadow:var(--shadow-lg);animation:pop .12s ease;}
+.modal-box.wide{max-width:760px;}
+@keyframes pop{from{transform:translateY(6px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);}
+.modal-head h3{font-size:15.5px;}
+.modal-body{padding:20px;max-height:70vh;overflow-y:auto;}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid var(--border);}
+
+/* ===== TOAST ===== */
+#toast-root{position:fixed;bottom:18px;right:18px;z-index:400;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--text);color:var(--bg);padding:11px 16px;border-radius:9px;font-size:13px;font-weight:600;box-shadow:var(--shadow-lg);animation:pop .15s ease;max-width:320px;}
+.toast.err{background:var(--danger);color:#fff;}
+.toast.ok{background:var(--success);color:#fff;}
+
+/* ===== EMPTY STATE ===== */
+.empty-state{text-align:center;padding:50px 20px;color:var(--dim);}
+.empty-state .es-icon{font-size:36px;margin-bottom:10px;}
+.empty-state h4{color:var(--text);margin-bottom:6px;}
+.empty-state p{font-size:12.5px;margin:0 0 16px;}
+
+/* ===== DASHBOARD ===== */
+.dash-list-item{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);}
+.dash-list-item:last-child{border-bottom:none;}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--primary-light);color:var(--primary-dark);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0;}
+.dash-list-item .dli-title{font-weight:700;font-size:13px;}
+.dash-list-item .dli-sub{font-size:11.5px;color:var(--dim);}
+.dash-list-item .dli-right{margin-left:auto;text-align:right;}
+canvas{max-width:100%;}
+
+/* ===== AGENDA ===== */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+.cal-dow{text-align:center;font-size:11px;font-weight:700;color:var(--dim);padding-bottom:6px;text-transform:uppercase;}
+.cal-cell{background:var(--surface);border:1px solid var(--border);border-radius:9px;min-height:84px;padding:6px;cursor:pointer;display:flex;flex-direction:column;gap:4px;}
+.cal-cell:hover{border-color:var(--primary);}
+.cal-cell.out{opacity:.35;}
+.cal-cell.today{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary);}
+.cal-cell .cal-daynum{font-size:12px;font-weight:700;}
+.cal-cell .cal-dots{display:flex;gap:3px;flex-wrap:wrap;}
+.cal-cell .cal-count{font-size:10.5px;color:var(--dim);background:var(--surface-2);border-radius:8px;padding:1px 6px;align-self:flex-start;}
+.day-track{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;}
+.prof-col{flex:1;min-width:220px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.prof-col-head{padding:11px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;font-weight:700;font-size:13px;}
+.prof-col-body{padding:8px;display:flex;flex-direction:column;gap:7px;min-height:60px;}
+.appt-card{border-radius:9px;padding:9px 10px;border-left:4px solid var(--primary);background:var(--primary-light);cursor:pointer;}
+.appt-card .ac-time{font-size:11px;font-weight:800;font-family:var(--mono);}
+.appt-card .ac-client{font-size:12.5px;font-weight:700;margin-top:2px;}
+.appt-card .ac-service{font-size:11.5px;color:var(--dim);}
+.day-empty{font-size:12px;color:var(--dim-2);text-align:center;padding:16px 0;}
+
+/* ===== CLIENT DETAIL ===== */
+.client-header{display:flex;gap:16px;align-items:center;margin-bottom:18px;}
+.client-header .avatar{width:58px;height:58px;font-size:20px;}
+.tab-row{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px;}
+.tab-row button{background:transparent;border:none;padding:10px 4px;margin-right:18px;font-weight:700;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;font-size:13px;}
+.tab-row button.active{color:var(--primary-dark);border-color:var(--primary);}
+
+/* ===== MISC ===== */
+.kv-list div{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--border);font-size:12.5px;}
+.kv-list div:last-child{border:none;}
+.kv-list b{font-weight:700;}
+.color-swatch{display:inline-block;width:16px;height:16px;border-radius:5px;vertical-align:middle;margin-right:6px;}
+.color-picker{display:flex;gap:7px;flex-wrap:wrap;}
+.color-picker span{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;display:inline-block;}
+.color-picker span.sel{border-color:var(--text);}
+.banner{display:flex;align-items:center;gap:12px;background:var(--accent-light);border:1px solid var(--accent);color:var(--text);padding:12px 16px;border-radius:var(--radius);margin-bottom:18px;font-size:13px;}
+.banner button{margin-left:auto;}
+.reminder-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;background:var(--surface);}
+.reminder-row .rr-main{flex:1;}
+.reminder-row .rr-title{font-weight:700;font-size:13px;}
+.reminder-row .rr-sub{font-size:11.5px;color:var(--dim);}
+.wa-btn{background:#e7f6ea;color:#1f7a35;}
+:root[data-theme="dark"] .wa-btn{background:#173321;color:#5fd57f;}
+
+@media(max-width:900px){
+  #sidebar{position:fixed;top:0;bottom:0;left:0;transform:translateX(-100%);box-shadow:var(--shadow-lg);}
+  #sidebar.open{transform:translateX(0);}
+  #hamburger{display:flex;}
+  #sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:55;}
+  #sidebar-overlay.show{display:block;}
+  .grid-4,.grid-3{grid-template-columns:repeat(2,1fr);}
+}
+@media(max-width:520px){
+  #main-content{padding:14px;}
+  #topbar{padding:10px 14px;}
+  .grid-4,.grid-3,.grid-2{grid-template-columns:1fr;}
+  .field-row{flex-direction:column;gap:0;}
+}
+@media print{
+  #sidebar,#topbar,.toolbar,.btn{display:none!important;}
+  #main-content{padding:0;overflow:visible;}
+}
+</style>
+</head>
+<body>
+
+<div id="lock-screen" class="hidden">
+  <div class="lock-box">
+    <div class="lock-logo">🔒</div>
+    <h2 id="lock-clinic-name">Clínica</h2>
+    <p>Digite o PIN de acesso</p>
+    <input id="lock-pin" type="password" inputmode="numeric" maxlength="6" placeholder="••••">
+    <div id="lock-error"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" id="lock-submit">Entrar</button>
+  </div>
+</div>
+
+<div id="app">
+  <div id="sidebar-overlay"></div>
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="logo-dot" id="brand-logo">C</div>
+      <div>
+        <div class="name" id="brand-name">Minha Clínica</div>
+        <div class="sub">gestão &amp; agenda</div>
+      </div>
+    </div>
+    <nav id="nav-list"></nav>
+    <div id="sidebar-footer">
+      <button class="icon-btn" id="btn-theme" title="Alternar tema"></button>
+      <button class="icon-btn" id="btn-print" title="Imprimir">
+        <svg class="icon" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <div id="main-col">
+    <header id="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="icon-btn" id="hamburger">
+          <svg class="icon" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h1 id="view-title">Painel</h1>
+      </div>
+      <div class="topbar-right">
+        <span class="today-pill" id="today-pill"></span>
+        <button class="btn btn-primary" id="btn-new-appt">
+          <svg class="icon" viewBox="0 0 24 24" stroke="white"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Novo agendamento
+        </button>
+      </div>
+    </header>
+    <main id="main-content"></main>
+  </div>
+</div>
+
+<div id="modal-root" class="hidden"></div>
+<div id="toast-root"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   ICONS
+============================================================ */
+const ICONS = {
+  home:'<path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/>',
+  calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><line x1="16" y1="3" x2="16" y2="7"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  users:'<circle cx="9" cy="8" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17.5" cy="9" r="2.6"/><path d="M15.7 13a5.2 5.2 0 0 1 5.8 5.4"/>',
+  service:'<path d="M12 3c1 2 1 3.2 0 4.2C11 8.2 11 9.4 12 11"/><path d="M4 14c4.5-2 11.5-2 16 0"/><path d="M4 14c0 4 3 7.5 8 7.5s8-3.5 8-7.5"/>',
+  briefcase:'<rect x="3" y="7.5" width="18" height="12" rx="2"/><path d="M8 7.5V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1.5"/><line x1="3" y1="12.5" x2="21" y2="12.5"/>',
+  money:'<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/>',
+  bell:'<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  chart:'<line x1="4" y1="20" x2="20" y2="20"/><rect x="6" y="12" width="3" height="8"/><rect x="13.5" y="7" width="3" height="13"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M12 3v2.4M12 18.6V21M4.9 6.9l1.7 1.7M17.4 15.4l1.7 1.7M3 12h2.4M18.6 12H21M4.9 17.1l1.7-1.7M17.4 8.6l1.7-1.7"/>',
+  plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  trash:'<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>',
+  x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  search:'<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.6" y2="16.6"/>',
+  chevronL:'<polyline points="15 18 9 12 15 6"/>',
+  chevronR:'<polyline points="9 18 15 12 9 6"/>',
+  check:'<polyline points="20 6 9 17 4 12"/>',
+  whatsapp:'<path d="M4 20l1.4-4.2A8 8 0 1 1 9 18.6Z"/><path d="M9 9.4c.15 2 2.6 4.4 4.6 4.6.5 0 .9-.3.9-.8v-.5l-1.7-.7-.5.6a4.2 4.2 0 0 1-2-2l.6-.5-.7-1.7h-.5c-.5 0-.8.5-.7 1z"/>',
+  cake:'<path d="M4 21v-6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6"/><path d="M2 21h20"/><path d="M12 13V8"/><path d="M12 4c-1 0-1-1.2 0-2 1 .8 1 2 0 2Z"/><path d="M7 13v-1a1 1 0 0 1 2 0v1M11 13v-1a1 1 0 0 1 2 0v1M15 13v-1a1 1 0 0 1 2 0v1"/>',
+  sun:'<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8 6 18M18 6l1.8-1.8"/>',
+  moon:'<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4 7 7 0 0 0 20 14.5Z"/>',
+  download:'<path d="M12 3v12"/><polyline points="7 11 12 16 17 11"/><path d="M5 19h14"/>',
+  upload:'<path d="M12 21V9"/><polyline points="7 13 12 8 17 13"/><path d="M5 19h14"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>',
+  package:'<path d="M21 8l-9-5-9 5 9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
+  info:'<circle cx="12" cy="12" r="9.5"/><line x1="12" y1="11" x2="12" y2="16.5"/><circle cx="12" cy="7.7" r="0.2"/>',
+  list:'<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3" y2="6"/><line x1="3" y1="12" x2="3" y2="12"/><line x1="3" y1="18" x2="3" y2="18"/>',
+};
+function icon(name,extra){ return `<svg class="icon" ${extra||''} viewBox="0 0 24 24">${ICONS[name]||''}</svg>`; }
+
+/* ============================================================
+   STORAGE
+============================================================ */
+const STORAGE_KEY='clinicaApp_v1';
+function defaultDB(){
+  return {
+    settings:{
+      clinicaNome:'Minha Clínica', telefone:'', endereco:'',
+      horarioAbertura:'08:00', horarioFechamento:'20:00',
+      diasFuncionamento:[1,2,3,4,5,6], tema:'light',
+      pinAtivo:false, pin:'', logoTexto:'C'
+    },
+    clients:[], services:[], professionals:[], appointments:[], transactions:[], packages:[]
+  };
+}
+let db = null;
+function loadDB(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(raw){ const parsed=JSON.parse(raw); return Object.assign(defaultDB(),parsed,{settings:Object.assign(defaultDB().settings,parsed.settings||{})}); }
+  }catch(e){ console.error('Erro ao carregar dados',e); }
+  return defaultDB();
+}
+function saveDB(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
+
+/* ============================================================
+   UTILS
+============================================================ */
+function uid(p){ return (p||'id')+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function esc(s){ if(s===undefined||s===null) return ''; return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtMoney(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function fmtDate(d){ if(!d) return ''; const [y,m,dd]=d.split('-'); return `${dd}/${m}/${y}`; }
+function fmtDateLong(d){ if(!d) return ''; const dt=parseISO(d); return dt.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}); }
+function parseISO(d){ const [y,m,dd]=d.split('-').map(Number); return new Date(y,m-1,dd); }
+function toISO(dt){ return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); }
+function todayStr(){ return toISO(new Date()); }
+function addDays(iso,n){ const dt=parseISO(iso); dt.setDate(dt.getDate()+n); return toISO(dt); }
+function timeToMin(t){ const [h,m]=t.split(':').map(Number); return h*60+m; }
+function minToTime(min){ min=((min%1440)+1440)%1440; return String(Math.floor(min/60)).padStart(2,'0')+':'+String(min%60).padStart(2,'0'); }
+function initials(name){ return (name||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
+function onlyDigits(s){ return (s||'').replace(/\D/g,''); }
+function waLink(phone,msg){ const p=onlyDigits(phone); const full = p.length<=11 ? '55'+p : p; return `https://wa.me/${full}?text=${encodeURIComponent(msg)}`; }
+function downloadFile(filename,content,mime){ const blob=new Blob([content],{type:mime}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); URL.revokeObjectURL(a.href); }
+function toCSV(rows,headers){ const esc2=v=>`"${String(v===undefined||v===null?'':v).replace(/"/g,'""')}"`; const lines=[headers.map(esc2).join(';')]; rows.forEach(r=>lines.push(r.map(esc2).join(';'))); return '﻿'+lines.join('\r\n'); }
+const DOW=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const STATUS_LABEL={agendado:'Agendado',confirmado:'Confirmado',em_atendimento:'Em atendimento',concluido:'Concluído',cancelado:'Cancelado',faltou:'Faltou'};
+const PAY_LABEL={dinheiro:'Dinheiro',pix:'Pix',cartao_credito:'Cartão de crédito',cartao_debito:'Cartão de débito',pacote:'Pacote de sessões'};
+const PALETTE=['#6f8f7c','#c98a5e','#5c85ab','#a2678f','#c99a3a','#5f9a72','#8a6fb0','#b0555f'];
+
+/* ============================================================
+   GETTERS
+============================================================ */
+function getClient(id){ return db.clients.find(c=>c.id===id); }
+function getService(id){ return db.services.find(s=>s.id===id); }
+function getProf(id){ return db.professionals.find(p=>p.id===id); }
+function getPackage(id){ return db.packages.find(p=>p.id===id); }
+function activeProfs(){ return db.professionals.filter(p=>p.ativo!==false); }
+function activeServices(){ return db.services.filter(s=>s.ativo!==false); }
+
+/* ============================================================
+   STATE / ROUTER
+============================================================ */
+const state={
+  view:'dashboard',
+  agenda:{ mode:'mes', date:todayStr(), profFilter:'todos' },
+  clients:{ search:'' },
+  clientDetail:{ id:null, tab:'agendamentos' },
+  services:{ search:'' },
+  financeiro:{ tab:'resumo', periodo:mesAtualRange() },
+  relatorios:{ periodo:mesAtualRange() },
+  lembretes:{},
+};
+function mesAtualRange(){ const now=new Date(); const first=new Date(now.getFullYear(),now.getMonth(),1); const last=new Date(now.getFullYear(),now.getMonth()+1,0); return {ini:toISO(first),fim:toISO(last)}; }
+
+const NAV=[
+  {id:'dashboard',label:'Painel',icon:'home'},
+  {id:'agenda',label:'Agenda',icon:'calendar'},
+  {id:'clientes',label:'Clientes',icon:'users'},
+  {id:'servicos',label:'Serviços',icon:'service'},
+  {id:'profissionais',label:'Profissionais',icon:'briefcase'},
+  {id:'financeiro',label:'Financeiro',icon:'money'},
+  {id:'lembretes',label:'Lembretes',icon:'bell'},
+  {id:'relatorios',label:'Relatórios',icon:'chart'},
+  {id:'config',label:'Configurações',icon:'gear'},
+];
+
+function renderSidebar(){
+  const pend = pendingReminders().length;
+  document.getElementById('nav-list').innerHTML = NAV.map(n=>`
+    <button class="nav-item ${state.view===n.id?'active':''}" data-nav="${n.id}">
+      ${icon(n.icon)}<span>${n.label}</span>
+      ${n.id==='lembretes'&&pend? `<span class="badge-count">${pend}</span>`:''}
+    </button>`).join('');
+  document.getElementById('brand-name').textContent = db.settings.clinicaNome || 'Minha Clínica';
+  document.getElementById('brand-logo').textContent = (db.settings.clinicaNome||'C').trim()[0]?.toUpperCase()||'C';
+  document.getElementById('lock-clinic-name').textContent = db.settings.clinicaNome || 'Clínica';
+}
+
+function setView(v){
+  state.view=v;
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('show');
+  render();
+}
+
+function render(){
+  renderSidebar();
+  const titles={dashboard:'Painel',agenda:'Agenda',clientes:'Clientes',servicos:'Serviços',profissionais:'Profissionais',financeiro:'Financeiro',lembretes:'Lembretes',relatorios:'Relatórios',config:'Configurações'};
+  document.getElementById('view-title').textContent = titles[state.view]||'';
+  const main=document.getElementById('main-content');
+  const fns={
+    dashboard:renderDashboard, agenda:renderAgenda, clientes:renderClientes, servicos:renderServicos,
+    profissionais:renderProfissionais, financeiro:renderFinanceiro, lembretes:renderLembretes,
+    relatorios:renderRelatorios, config:renderConfig
+  };
+  main.innerHTML = (fns[state.view]||renderDashboard)();
+  main.scrollTop=0;
+  const d=new Date();
+  document.getElementById('today-pill').textContent = d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
+}
+
+/* ============================================================
+   DASHBOARD
+============================================================ */
+function renderDashboard(){
+  const today=todayStr();
+  const apptsToday=db.appointments.filter(a=>a.data===today && a.status!=='cancelado').sort((a,b)=>a.horaInicio.localeCompare(b.horaInicio));
+  const revToday=sumPaid(db.transactions.filter(t=>t.data===today && t.tipo==='entrada'));
+  const monthRange=mesAtualRange();
+  const revMonth=sumPaid(db.transactions.filter(t=>t.tipo==='entrada' && t.data>=monthRange.ini && t.data<=monthRange.fim));
+  const expMonth=sumPaid(db.transactions.filter(t=>t.tipo==='saida' && t.data>=monthRange.ini && t.data<=monthRange.fim));
+  const pend=pendingReminders().length;
+  const birthdays=upcomingBirthdays(30).slice(0,5);
+  const noShowRate = calcNoShowRate(monthRange);
+
+  const last7=[]; for(let i=6;i>=0;i--){ const d=addDays(today,-i); last7.push({d,v:sumPaid(db.transactions.filter(t=>t.data===d&&t.tipo==='entrada'))}); }
+  const maxV=Math.max(1,...last7.map(x=>x.v));
+
+  return `
+  <div class="grid grid-4">
+    ${statCard('Agendamentos hoje',apptsToday.length,'calendar',db.settings ? `${apptsToday.filter(a=>a.status==='concluido').length} concluídos`:'', 'info')}
+    ${statCard('Faturamento hoje',fmtMoney(revToday),'money','recebido hoje','success')}
+    ${statCard('Faturamento do mês',fmtMoney(revMonth),'chart',`despesas: ${fmtMoney(expMonth)}`,'primary')}
+    ${statCard('Lembretes pendentes',pend,'bell',pend?'clique para enviar':'tudo em dia','warning')}
+  </div>
+
+  <div class="grid grid-2" style="margin-top:18px;align-items:start;">
+    <div class="card">
+      <div class="section-title" style="margin-top:0;"><h3>Agenda de hoje</h3><span class="link" data-nav="agenda">ver agenda</span></div>
+      ${apptsToday.length===0?`<div class="empty-state" style="padding:24px 0;"><div class="es-icon">🗓️</div><p>Nenhum agendamento para hoje.</p></div>`:
+      apptsToday.map(a=>{
+        const c=getClient(a.clienteId), s=getService(a.servicoId), p=getProf(a.profissionalId);
+        return `<div class="dash-list-item">
+          <div class="avatar" style="background:${p?p.cor+'22':'var(--primary-light)'};color:${p?p.cor:'var(--primary-dark)'}">${initials(c?c.nome:'?')}</div>
+          <div>
+            <div class="dli-title">${esc(c?c.nome:'Cliente removido')}</div>
+            <div class="dli-sub">${esc(s?s.nome:'')} · ${esc(p?p.nome:'')}</div>
+          </div>
+          <div class="dli-right">
+            <div class="dli-title" style="font-family:var(--mono);font-size:12.5px;">${a.horaInicio}</div>
+            <span class="badge badge-${a.status}">${STATUS_LABEL[a.status]}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="card">
+      <div class="section-title" style="margin-top:0;"><h3>Faturamento — últimos 7 dias</h3></div>
+      <div style="display:flex;align-items:flex-end;gap:8px;height:130px;">
+        ${last7.map(x=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;">
+          <div title="${fmtMoney(x.v)}" style="width:100%;background:var(--primary);border-radius:5px 5px 0 0;height:${Math.max(3,(x.v/maxV)*90)}px;"></div>
+          <div style="font-size:10px;color:var(--dim);">${parseISO(x.d).toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','')}</div>
+        </div>`).join('')}
+      </div>
+      <div class="section-title"><h3>Aniversariantes (30 dias)</h3><span class="link" data-nav="lembretes">ver todos</span></div>
+      ${birthdays.length===0?`<p style="color:var(--dim);font-size:12.5px;">Nenhum aniversário próximo.</p>`:
+      birthdays.map(c=>`<div class="dash-list-item">
+        <div class="avatar">${initials(c.nome)}</div>
+        <div><div class="dli-title">${esc(c.nome)}</div><div class="dli-sub">${icon('cake')} ${fmtDate(c.nascimento).slice(0,5)}</div></div>
+      </div>`).join('')}
+    </div>
+  </div>
+
+  <div class="grid grid-3" style="margin-top:18px;">
+    <div class="card"><div class="stat-label">Taxa de comparecimento (mês)</div><div class="stat-value" style="margin-top:6px;">${(100-noShowRate).toFixed(0)}%</div><div class="stat-sub">faltas: ${noShowRate.toFixed(0)}%</div></div>
+    <div class="card"><div class="stat-label">Clientes cadastrados</div><div class="stat-value" style="margin-top:6px;">${db.clients.length}</div><div class="stat-sub">${db.clients.filter(c=>c.ativo!==false).length} ativos</div></div>
+    <div class="card"><div class="stat-label">Saldo do mês</div><div class="stat-value" style="margin-top:6px;color:${revMonth-expMonth>=0?'var(--success)':'var(--danger)'}">${fmtMoney(revMonth-expMonth)}</div><div class="stat-sub">receitas − despesas</div></div>
+  </div>
+  ${db.clients.length===0?`<div class="banner" style="margin-top:18px;"><div>${icon('info')}</div><div>Comece cadastrando serviços, profissionais e clientes — ou carregue dados de demonstração para explorar o sistema.</div><button class="btn btn-outline btn-sm" data-action="seed-demo">Carregar exemplo</button></div>`:''}
+  `;
+}
+function statCard(label,value,ic,sub,tone){
+  const toneMap={info:'var(--info)',success:'var(--success)',primary:'var(--primary)',warning:'var(--warning)'};
+  const bg={info:'var(--info-light)',success:'var(--success-light)',primary:'var(--primary-light)',warning:'var(--warning-light)'};
+  return `<div class="card stat-card">
+    <div class="stat-top"><span class="stat-label">${label}</span><span class="stat-icon" style="background:${bg[tone]};color:${toneMap[tone]}">${icon(ic)}</span></div>
+    <div class="stat-value">${value}</div>
+    <div class="stat-sub">${sub||''}</div>
+  </div>`;
+}
+function sumPaid(list){ return list.reduce((s,t)=>s+(Number(t.valor)||0),0); }
+function calcNoShowRate(range){
+  const list=db.appointments.filter(a=>a.data>=range.ini&&a.data<=range.fim&&['concluido','faltou'].includes(a.status));
+  if(!list.length) return 0;
+  return (list.filter(a=>a.status==='faltou').length/list.length)*100;
+}
+function upcomingBirthdays(days){
+  const today=new Date(); today.setHours(0,0,0,0);
+  return db.clients.filter(c=>c.nascimento).map(c=>{
+    const [y,m,d]=c.nascimento.split('-').map(Number);
+    let next=new Date(today.getFullYear(),m-1,d);
+    if(next<today) next=new Date(today.getFullYear()+1,m-1,d);
+    return {...c,_diff:Math.round((next-today)/86400000)};
+  }).filter(c=>c._diff<=days).sort((a,b)=>a._diff-b._diff);
+}
+function pendingReminders(){
+  const now=Date.now();
+  const limit=now+48*3600*1000;
+  return db.appointments.filter(a=>{
+    if(a.lembreteEnviado || !['agendado','confirmado'].includes(a.status)) return false;
+    const t=new Date(a.data+'T'+a.horaInicio).getTime();
+    return t>=now-3600000 && t<=limit;
+  }).sort((a,b)=> (a.data+a.horaInicio).localeCompare(b.data+b.horaInicio));
+}
+
+/* ============================================================
+   AGENDA
+============================================================ */
+function renderAgenda(){
+  const a=state.agenda;
+  const profOptions=`<option value="todos">Todos os profissionais</option>` + activeProfs().map(p=>`<option value="${p.id}" ${a.profFilter===p.id?'selected':''}>${esc(p.nome)}</option>`).join('');
+  return `
+  <div class="toolbar">
+    <div class="chip-select">
+      <button data-agenda-mode="mes" class="${a.mode==='mes'?'active':''}">Mês</button>
+      <button data-agenda-mode="dia" class="${a.mode==='dia'?'active':''}">Dia</button>
+      <button data-agenda-mode="lista" class="${a.mode==='lista'?'active':''}">Lista</button>
+    </div>
+    <button class="icon-btn" data-agenda-nav="-1">${icon('chevronL')}</button>
+    <div style="font-weight:700;min-width:170px;text-align:center;">${agendaLabel()}</div>
+    <button class="icon-btn" data-agenda-nav="1">${icon('chevronR')}</button>
+    <button class="btn-sm btn btn-outline" data-agenda-today>Hoje</button>
+    <div class="spacer"></div>
+    <select id="agenda-prof-filter" style="padding:8px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-weight:600;font-size:12.5px;">${profOptions}</select>
+  </div>
+  <div id="agenda-body">${a.mode==='mes'?renderAgendaMes():a.mode==='dia'?renderAgendaDia():renderAgendaLista()}</div>
+  `;
+}
+function agendaLabel(){
+  const a=state.agenda;
+  if(a.mode==='mes'){ const d=parseISO(a.date); return MONTHS[d.getMonth()]+' de '+d.getFullYear(); }
+  if(a.mode==='dia'){ const d=parseISO(a.date); return DOW[d.getDay()]+', '+fmtDate(a.date); }
+  return 'Todos os agendamentos';
+}
+function renderAgendaMes(){
+  const a=state.agenda;
+  const cur=parseISO(a.date);
+  const first=new Date(cur.getFullYear(),cur.getMonth(),1);
+  const startOffset=first.getDay();
+  const gridStart=new Date(first); gridStart.setDate(gridStart.getDate()-startOffset);
+  let cells='';
+  for(let i=0;i<42;i++){
+    const d=new Date(gridStart); d.setDate(d.getDate()+i);
+    const iso=toISO(d);
+    const out=d.getMonth()!==cur.getMonth();
+    const isToday=iso===todayStr();
+    let list=db.appointments.filter(x=>x.data===iso && x.status!=='cancelado');
+    if(a.profFilter!=='todos') list=list.filter(x=>x.profissionalId===a.profFilter);
+    const dots=list.slice(0,4).map(x=>{const p=getProf(x.profissionalId);return `<span class="dot" style="background:${p?p.cor:'var(--dim-2)'}"></span>`;}).join('');
+    cells+=`<div class="cal-cell ${out?'out':''} ${isToday?'today':''}" data-daycell="${iso}">
+      <div class="cal-daynum">${d.getDate()}</div>
+      <div class="cal-dots">${dots}</div>
+      ${list.length?`<div class="cal-count">${list.length} agend.</div>`:''}
+    </div>`;
+  }
+  return `<div class="cal-grid">${DOW.map(d=>`<div class="cal-dow">${d}</div>`).join('')}${cells}</div>`;
+}
+function renderAgendaDia(){
+  const a=state.agenda;
+  let profs=activeProfs();
+  if(a.profFilter!=='todos') profs=profs.filter(p=>p.id===a.profFilter);
+  if(profs.length===0) return `<div class="empty-state"><div class="es-icon">👩‍⚕️</div><h4>Nenhum profissional cadastrado</h4><p>Cadastre profissionais para organizar a agenda por atendente.</p></div>`;
+  return `<div class="day-track">${profs.map(p=>{
+    let list=db.appointments.filter(x=>x.data===a.date && x.profissionalId===p.id && x.status!=='cancelado').sort((x,y)=>x.horaInicio.localeCompare(y.horaInicio));
+    return `<div class="prof-col">
+      <div class="prof-col-head"><span class="dot" style="background:${p.cor};width:10px;height:10px;"></span>${esc(p.nome)}</div>
+      <div class="prof-col-body" data-daycell="${a.date}" data-newprof="${p.id}">
+        ${list.length===0?`<div class="day-empty">Sem agendamentos</div>`:list.map(x=>appointmentCard(x)).join('')}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+function appointmentCard(x){
+  const c=getClient(x.clienteId), s=getService(x.servicoId);
+  return `<div class="appt-card" data-appt="${x.id}" style="border-color:${STATUS_COLOR[x.status]||'var(--primary)'};background:${STATUS_COLOR[x.status]||'var(--primary)'}18;">
+    <div class="ac-time">${x.horaInicio}–${x.horaFim} <span class="badge badge-${x.status}" style="margin-left:4px;">${STATUS_LABEL[x.status]}</span></div>
+    <div class="ac-client">${esc(c?c.nome:'Cliente removido')}</div>
+    <div class="ac-service">${esc(s?s.nome:'')}</div>
+  </div>`;
+}
+const STATUS_COLOR={agendado:'#5c85ab',confirmado:'#6f8f7c',em_atendimento:'#c99a3a',concluido:'#5f9a72',cancelado:'#a89f8f',faltou:'#c1584a'};
+function renderAgendaLista(){
+  const a=state.agenda;
+  let list=db.appointments.slice().sort((x,y)=> (y.data+y.horaInicio).localeCompare(x.data+x.horaInicio));
+  if(a.profFilter!=='todos') list=list.filter(x=>x.profissionalId===a.profFilter);
+  if(list.length===0) return emptyState('calendar','Nenhum agendamento','Clique em “Novo agendamento” para começar.');
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>Data</th><th>Hora</th><th>Cliente</th><th>Serviço</th><th>Profissional</th><th>Status</th><th>Pagamento</th><th></th></tr></thead>
+    <tbody>${list.map(x=>{
+      const c=getClient(x.clienteId), s=getService(x.servicoId), p=getProf(x.profissionalId);
+      return `<tr>
+        <td>${fmtDate(x.data)}</td><td style="font-family:var(--mono)">${x.horaInicio}</td>
+        <td>${esc(c?c.nome:'—')}</td><td>${esc(s?s.nome:'—')}</td><td>${esc(p?p.nome:'—')}</td>
+        <td><span class="badge badge-${x.status}">${STATUS_LABEL[x.status]}</span></td>
+        <td>${x.pago?`<span class="badge badge-pago">Pago</span>`:`<span class="badge badge-pendente">Pendente</span>`}</td>
+        <td style="text-align:right;"><button class="btn-ghost btn-icon" data-appt="${x.id}">${icon('edit')}</button></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+function emptyState(ic,title,sub,actionHtml){
+  return `<div class="empty-state"><div class="es-icon">${icon(ic,'style="width:32px;height:32px"')}</div><h4>${title}</h4><p>${sub}</p>${actionHtml||''}</div>`;
+}
+
+/* ---- appointment modal ---- */
+function openApptModal(id,presetDate,presetProf){
+  const editing = id ? db.appointments.find(a=>a.id===id) : null;
+  const clientsOpts = db.clients.filter(c=>c.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
+    .map(c=>`<option value="${c.id}" ${editing&&editing.clienteId===c.id?'selected':''}>${esc(c.nome)}</option>`).join('');
+  const serviceOpts = activeServices().map(s=>`<option value="${s.id}" data-dur="${s.duracao}" data-preco="${s.preco}" ${editing&&editing.servicoId===s.id?'selected':''}>${esc(s.nome)} (${s.duracao}min · ${fmtMoney(s.preco)})</option>`).join('');
+  const profOpts = activeProfs().map(p=>`<option value="${p.id}" ${(editing?editing.profissionalId:presetProf)===p.id?'selected':''}>${esc(p.nome)}</option>`).join('');
+  const statusOpts = Object.keys(STATUS_LABEL).map(s=>`<option value="${s}" ${editing&&editing.status===s?'selected':''}>${STATUS_LABEL[s]}</option>`).join('');
+  const payOpts = Object.keys(PAY_LABEL).map(p=>`<option value="${p}" ${editing&&editing.formaPagamento===p?'selected':''}>${PAY_LABEL[p]}</option>`).join('');
+  const val = editing ? editing : {data:presetDate||state.agenda.date||todayStr(),horaInicio:'09:00',horaFim:'09:30',status:'agendado',valor:'',formaPagamento:'pix',observacoes:'',pago:false};
+
+  if(!db.clients.length || !activeServices().length || !activeProfs().length){
+    openModal(`<div class="modal-box"><div class="modal-head"><h3>Antes de agendar…</h3><button class="btn-ghost btn-icon" data-close-modal>${icon('x')}</button></div>
+    <div class="modal-body"><p>Você precisa ter ao menos <b>1 cliente</b>, <b>1 serviço</b> e <b>1 profissional</b> cadastrados para criar um agendamento.</p></div>
+    <div class="modal-foot"><button class="btn btn-primary" data-close-modal>Entendi</button></div></div>`);
+    return;
+  }
+
+  openModal(`<div class="modal-box wide">
+    <div class="modal-head"><h3>${editing?'Editar agendamento':'Novo agendamento'}</h3><button class="btn-ghost btn-icon" data-close-modal>${icon('x')}</button></div>
+    <form id="form-appt">
+      <div class="modal-body">
+        <div class="field-row">
+          <div class="field"><label>Cliente</label><select name="clienteId" required>${clientsOpts}</select></div>
+          <div class="field"><label>Serviço</label><select name="servicoId" id="appt-service" required>${serviceOpts}</select></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Profissional</label><select name="profissionalId" required>${profOpts}</select></div>
+          <div class="field"><label>Data</label><input type="date" name="data" value="${val.data}" required></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Início</label><input type="time" name="horaInicio" id="appt-inicio" value="${val.horaInicio}" required></div>
+          <div class="field"><label>Fim</label><input type="time" name="horaFim" id="appt-fim" value="${val.horaFim}" required></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Status</label><select name="status">${statusOpts}</select></div>
+          <div class="field"><label>Valor (R$)</label><input type="number" step="0.01" name="valor" value="${val.valor!==''&&val.valor!==undefined?val.valor:''}" placeholder="0,00"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Forma de pagamento</label><select name="formaPagamento">${payOpts}</select></div>
+          <div class="field" style="display:flex;align-items:flex-end;">
+            <label class="checkline"><input type="checkbox" name="pago" ${val.pago?'checked':''}> Pagamento já recebido</label>
+          </div>
+        </div>
+        <div class="field"><label>Observações</label><textarea name="observacoes">${esc(val.observacoes||'')}</textarea></div>
+        <div id="appt-conflict" style="display:none;color:var(--danger);font-size:12.5px;font-weight:700;margin-top:-4px;">⚠ Conflito de horário para este profissional.</div>
+      </div>
+      <div class="modal-foot">
+        ${editing?`<button type="button" class="btn btn-danger" data-action="del-appt" data-id="${editing.id}" style="margin-right:auto;">${icon('trash')} Excluir</button>`:''}
+        <button type="button" class="btn btn-outline" data-close-modal>Cancelar</button>
+        <button type="submit" class="btn btn-primary">${icon('check')} Salvar</button>
+      </div>
+    </form>
+  </div>`);
+
+  const svcSel=document.getElementById('appt-service');
+  function autoFillFromService(){
+    const opt=svcSel.selectedOptions[0]; if(!opt) return;
+    const dur=Number(opt.dataset.dur||30);
+    const ini=document.getElementById('appt-inicio').value||'09:00';
+    document.getElementById('appt-fim').value=minToTime(timeToMin(ini)+dur);
+    const valorInput=document.querySelector('#form-appt [name=valor]');
+    if(!editing && !valorInput.value) valorInput.value=opt.dataset.preco;
+  }
+  svcSel.addEventListener('change',autoFillFromService);
+  document.getElementById('appt-inicio').addEventListener('change',autoFillFromService);
+  if(!editing) autoFillFromService();
+
+  document.getElementById('form-appt').addEventListener('submit',e=>{
+    e.preventDefault();
+    const fd=new FormData(e.target);
+    const rec={
+      clienteId:fd.get('clienteId'), servicoId:fd.get('servicoId'), profissionalId:fd.get('profissionalId'),
+      data:fd.get('data'), horaInicio:fd.get('horaInicio'), horaFim:fd.get('horaFim'),
+      status:fd.get('status'), valor:parseFloat(fd.get('valor'))||0, formaPagamento:fd.get('formaPagamento'),
+      pago: fd.get('pago')==='on', observacoes:fd.get('observacoes')||''
+    };
+    if(timeToMin(rec.horaFim)<=timeToMin(rec.horaInicio)){ toast('Horário de término deve ser após o início.','err'); return; }
+    const conflict = db.appointments.some(a=>a.id!==(editing&&editing.id) && a.profissionalId===rec.profissionalId && a.data===rec.data && a.status!=='cancelado' &&
+      timeToMin(a.horaInicio) < timeToMin(rec.horaFim) && timeToMin(rec.horaInicio) < timeToMin(a.horaFim));
+    if(conflict){ document.getElementById('appt-conflict').style.display='block'; toast('Já existe um agendamento neste horário para o profissional selecionado.','err'); return; }
+
+    let appt;
+    if(editing){ Object.assign(editing,rec); appt=editing; }
+    else{ appt={id:uid('appt'),criadoEm:Date.now(),lembreteEnviado:false,...rec}; db.appointments.push(appt); }
+
+    syncFinanceForAppointment(appt, editing?'concluido_status_change_or_paid_change':'new');
+    saveDB(); closeModal(); toast(editing?'Agendamento atualizado.':'Agendamento criado.','ok'); render();
+  });
+}
+function syncFinanceForAppointment(appt){
+  const existingTx = db.transactions.find(t=>t.agendamentoId===appt.id);
+  const shouldHaveTx = appt.pago && appt.status!=='cancelado';
+  if(shouldHaveTx){
+    const c=getClient(appt.clienteId), s=getService(appt.servicoId);
+    if(existingTx){ existingTx.valor=appt.valor; existingTx.data=appt.data; existingTx.formaPagamento=appt.formaPagamento; existingTx.descricao=`${s?s.nome:'Serviço'} — ${c?c.nome:''}`; }
+    else{ db.transactions.push({id:uid('tx'),tipo:'entrada',categoria:'atendimento',descricao:`${s?s.nome:'Serviço'} — ${c?c.nome:''}`,valor:appt.valor,data:appt.data,formaPagamento:appt.formaPagamento,agendamentoId:appt.id,profissionalId:appt.profissionalId,criadoEm:Date.now()}); }
+  } else if(existingTx){
+    db.transactions = db.transactions.filter(t=>t.id!==existingTx.id);
+  }
+  if(appt.status==='concluido' && appt.pacoteId){
+    const pkg=getPackage(appt.pacoteId);
+    if(pkg && !appt._pacoteDebitado){ pkg.sessoesRestantes=Math.max(0,pkg.sessoesRestantes-1); appt._pacoteDebitado=true; }
+  }
+}
+function deleteAppt(id){
+  db.transactions = db.transactions.filter(t=>t.agendamentoId!==id);
+  db.appointments = db.appointments.filter(a=>a.id!==id);
+  saveDB(); closeModal(); toast('Agendamento excluído.','ok'); render();
+}
+
+/* ============================================================
+   CLIENTES
+============================================================ */
+function renderClientes(){
+  const q=state.clients.search.trim().toLowerCase();
+  let list=db.clients.slice().sort((a,b)=>a.nome.localeCompare(b.nome));
+  if(q) list=list.filter(c=>(c.nome+c.telefone+c.email).toLowerCase().includes(q));
+  return `
+  <div class="toolbar">
+    <div class="search-input">${icon('search')}<input id="clientes-search" placeholder="Buscar por nome, telefone ou email" value="${esc(state.clients.search)}"></div>
+    <div class="spacer"></div>
+    <span style="color:var(--dim);font-size:12.5px;">${list.length} cliente(s)</span>
+    <button class="btn btn-primary" data-action="new-client">${icon('plus',' stroke="white"')} Novo cliente</button>
+  </div>
+  ${list.length===0?emptyState('users','Nenhum cliente encontrado','Cadastre seu primeiro cliente para começar a agendar.',`<button class="btn btn-primary" data-action="new-client">Novo cliente</button>`):
+  `<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Telefone</th><th>Email</th><th>Nascimento</th><th>Último atendimento</th><th></th></tr></thead>
+  <tbody>${list.map(c=>{
+    const last=db.appointments.filter(a=>a.clienteId===c.id&&a.status==='concluido').sort((a,b)=>b.data.localeCompare(a.data))[0];
+    return `<tr style="cursor:pointer" data-client-open="${c.id}">
+      <td><div style="display:flex;align-items:center;gap:10px;"><div class="avatar" style="width:30px;height:30px;font-size:11px;">${initials(c.nome)}</div>${esc(c.nome)}</div></td>
+      <td>${esc(c.telefone||'—')}</td><td>${esc(c.email||'—')}</td><td>${c.nascimento?fmtDate(c.nascimento):'—'}</td>
+      <td>${last?fmtDate(last.data):'—'}</td>
+      <td style="text-align:right;"><button class="btn-ghost btn-icon" data-edit-client="${c.id}">${icon('edit')}</button></td>
+    </tr>`;
+  }).join('')}</tbody></table></div>`}
+  `;
+}
+function openClientModal(id){
+  const editing = id ? getClient(id) : null;
+  const v = editing || {nome:'',telefone:'',email:'',nascimento:'',cpf:'',endereco:'',sexo:'',observacoes:'',restricoes:''};
+  openModal(`<div class="modal-box wide">
+    <div class="modal-head"><h3>${editing?'Editar cliente':'Novo cliente'}</h3><button class="btn-ghost btn-icon" data-close-modal>${icon('x')}</button></div>
+    <form id="form-client">
+      <div class="modal-body">
+        <div class="field-row">
+          <div class="field" style="flex:2"><label>Nome completo *</label><input name="nome" required value="${esc(v.nome)}"></div>
+          <div class="field"><label>Nascimento</label><input type="date" name="nascimento" value="${esc(v.nascimento)}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Telefone / WhatsApp</label><input name="telefone" placeholder="(11) 99999-9999" value="${esc(v.telefone)}"></div>
+          <div class="field"><label>Email</label><input type="email" name="email" value="${esc(v.email)}"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>CPF</label><input name="cpf" value="${esc(v.cpf)}"></div>
+          <div class="field"><label>Sexo</label><select name="sexo"><option value="">—</option><option value="F" ${v.sexo==='F'?'selected':''}>Feminino</option><option value="M" ${v.sexo==='M'?'selected':''}>Masculino</option><option value="O" ${v.sexo==='O'?'selected':''}>Outro</option></select></div>
+        </div>
+        <div class="field"><label>Endereço</label><input name="endereco" value="${esc(v.endereco)}"></div>
+        <div class="field"><label>Restrições / alergias / condições de saúde</label><textarea name="restricoes" placeholder="Ex: alergia a determinados óleos, gestante, hipertensão...">${esc(v.restricoes)}</textarea></div>
+        <div class="field"><label>Observações (anamnese / preferências)</label><textarea name="observacoes">${esc(v.observacoes)}</textarea></div>
+      </div>
+      <div class="modal-foot">
+        ${editing?`<button type="button" class="btn btn-danger" data-action="del-client" data-id="${editing.id}" style="margin-right:auto;">${icon('trash')} Excluir</button>`:''}
+        <button type="button" class="btn btn-outline" data-close-modal>Cancelar</button>
+        <button type="submit" class="btn btn-primary">${icon('check')} Salvar</button>
+      </div>
+    </form>
+  </div>`);
+  document.getElementById('form-client').addEventListener('submit',e=>{
+    e.preventDefault();
+    const fd=new FormData(e.target);
+    const rec={nome:fd.get('nome').trim(),telefone:fd.get('telefone').trim(),email:fd.get('email').trim(),nascimento:fd.get('nascimento'),cpf:fd.get('cpf').trim(),sexo:fd.get('sexo'),endereco:fd.get('endereco').trim(),restricoes:fd.get('restricoes').trim(),observacoes:fd.get('observacoes').trim()};
+    if(!rec.nome){ toast('Informe o nome do cliente.','err'); return; }
+    if(editing){ Object.assign(editing,rec); }
+    else{ db.clients.push({id:uid('cli'),ativo:true,criadoEm:Date.now(),...rec}); }
+    saveDB(); closeModal(); toast('Cliente salvo.','ok'); render();
+  });
+}
+function deleteClient(id){
+  db.clients = db.clients.filter(c=>c.id!==id);
+  saveDB(); closeModal(); toast('Cliente removido.','ok');
+  if(state.view==='clientes') render(); else render();
+}
+function renderClientDetail(id){
+  const c=getClient(id); if(!c){ setView('clientes'); return ''; }
+  const tab=state.clientDetail.tab;
+  const appts=db.appointments.filter(a=>a.clienteId===id).sort((a,b)=>b.data.localeCompare(a.data));
+  const pkgs=db.packages.filter(p=>p.clienteId===id);
+  const txs=db.transactions.filter(t=>{const a=db.appointments.find(x=>x.id===t.agendamentoId);return a&&a.clienteId===id;});
+  const totalGasto=sumPaid(txs);
+  return `
+  <button class="btn btn-ghost btn-sm" data-nav="clientes" style="margin-bottom:14px;">${icon('chevronL')} Voltar para clientes</button>
+  <div class="client-header">
+    <div class="avatar">${initials(c.nome)}</div>
+    <div style="flex:1;">
+      <h2 style="font-size:19px;">${esc(c.nome)}</h2>
+      <div style="color:var(--dim);font-size:12.5px;">${esc(c.telefone||'sem telefone')} ${c.email?'· '+esc(c.email):''}</div>
+    </div>
+    ${c.telefone?`<a class="btn btn-sm wa-btn" target="_blank" rel="noopener" href="${waLink(c.telefone,'Olá '+c.nome+'! ')}">${icon('whatsapp')} WhatsApp</a>`:''}
+    <button class="btn btn-outline btn-sm" data-edit-client="${c.id}">${icon('edit')} Editar</button>
+  </div>
+  <div class="grid grid-3">
+    ${statCard('Total gasto',fmtMoney(totalGasto),'money','pagamentos concluídos','success')}
+    ${statCard('Atendimentos',appts.filter(a=>a.status==='concluido').length,'calendar','concluídos','info')}
+    ${statCard('Pacotes ativos',pkgs.filter(p=>p.sessoesRestantes>0).length,'package','sessões restantes','primary')}
+  </div>
+  <div class="tab-row" style="margin-top:20px;">
+    <button data-client-tab="agendamentos" class="${tab==='agendamentos'?'active':''}">Agendamentos</button>
+    <button data-client-tab="pacotes" class="${tab==='pacotes'?'active':''}">Pacotes</button>
+    <button data-client-tab="ficha" class="${tab==='ficha'?'active':''}">Ficha / Anamnese</button>
+  </div>
+  ${tab==='agendamentos'?(appts.length===0?emptyState('calendar','Sem agendamentos','Este cliente ainda não possui agendamentos.'):
+    `<div class="table-wrap"><table><thead><tr><th>Data</th><th>Serviço</th><th>Profissional</th><th>Status</th><th>Valor</th></tr></thead>
+    <tbody>${appts.map(a=>{const s=getService(a.servicoId),p=getProf(a.profissionalId);return `<tr style="cursor:pointer" data-appt="${a.id}"><td>${fmtDate(a.data)} ${a.horaInicio}</td><td>${esc(s?s.nome:'—')}</td><td>${esc(p?p.nome:'—')}</td><td><span class="badge badge-${a.status}">${STATUS_LABEL[a.status]}</span></td><td>${fmtMoney(a.valor)}</td></tr>`;}).join('')}</tbody></table></div>`):''}
+  ${tab==='pacotes'?`<div class="toolbar"><div class="spacer"></div><button class="btn btn-primary btn-sm" data-action="new-package" data-client="${c.id}">${icon('plus',' stroke="white"')} Vender pacote</button></div>
+    ${pkgs.length===0?emptyState('package','Nenhum pacote','Venda um pacote de sessões para este cliente.'):
+    `<div class="grid grid-3">${pkgs.map(p=>{const s=getService(p.servicoId);return `<div class="card"><div style="font-weight:700;">${esc(s?s.nome:p.nome)}</div><div style="color:var(--dim);font-size:12px;margin:4px 0 10px;">Comprado em ${fmtDate(p.dataCompra)}</div>
+    <div class="stat-value" style="font-size:20px;">${p.sessoesRestantes}/${p.totalSessoes}</div><div class="stat-sub">sessões restantes</div>
+    <div class="kv-list" style="margin-top:10px;"><div><span>Valor pago</span><b>${fmtMoney(p.valorPago)}</b></div></div></div>`;}).join('')}</div>`}` :''}
+  ${tab==='ficha'?`<div class="grid grid-2">
+    <div class="card"><h3 style="font-size:13px;margin-bottom:10px;">Dados pessoais</h3><div class="kv-list">
+      <div><span>Nascimento</span><b>${c.nascimento?fmtDate(c.nascimento):'—'}</b></div>
+      <div><span>CPF</span><b>${esc(c.cpf||'—')}</b></div>
+      <div><span>Sexo</span><b>${c.sexo||'—'}</b></div>
+      <div><span>Endereço</span><b>${esc(c.endereco||'—')}</b></div>
+    </div></div>
+    <div class="card"><h3 style="font-size:13px;margin-bottom:10px;">Anamnese</h3>
+      <div style="font-size:12.5px;color:var(--dim);margin-bottom:4px;font-weight:700;">Restrições / alergias / condições</div>
+      <p style="font-size:13px;margin:0 0 12px;">${esc(c.restricoes)||'Nenhuma informada.'}</p>
+      <div style="font-size:12.5px;color:var(--dim);margin-bottom:4px;font-weight:700;">Observações</div>
+      <p style="font-size:13px;margin:0;">${esc(c.observacoes)||'Nenhuma.'}</p>
+    </div>
+  </div>`:''}
+  `;
+}
+function openPackageModal(clientId){
+  const c=getClient(clientId); if(!c) return;
+  const serviceOpts=activeServices().map(s=>`<option value="${s.id}" data-preco="${s.preco}">${esc(s.nome)}</option>`).join('');
+  openModal(`<div class="modal-box"><div class="modal-head"><h3>Vender pacote — ${esc(c.nome)}</h3><button class="btn-ghost btn-icon" data-close-modal>${icon('x')}</button></div>
+  <form id="form-pkg"><div class="modal-body">
+    <div class="field"><label>Serviço</label><select name="servicoId" id="pkg-service">${serviceOpts}</select></div>
+    <div class="field-row"><div class="field"><label>Qtd. de sessões</label><input type="number" min="1" name="totalSessoes" value="5" required></div>
+    <div class="field"><label>Valor total pago (R$)</label><input type="number" step="0.01" name="valorPago" id="pkg-valor" required></div></div>
+    <div class="field"><label>Validade</label><input type="date" name="validade"></div>
+  </div><div class="modal-foot"><button type="button" class="btn btn-outline" data-close-modal>Cancelar</button><button type="submit" class="btn btn-primary">${icon('check')} Registrar venda</button></div></form></div>`);
+  document.getElementById('form-pkg').addEventListener('submit',e=>{
+    e.preventDefault(); const fd=new FormData(e.target);
+    const servicoId=fd.get('servicoId'); const total=Number(fd.get('totalSessoes'))||1; const valor=parseFloat(fd.get('valorPago'))||0;
+    const s=getService(servicoId);
+    const pkg={id:uid('pkg'),clienteId:clientId,servicoId,nome:s?s.nome:'Pacote',totalSessoes:total,sessoesRestantes:total,valorPago:valor,dataCompra:todayStr(),validade:fd.get('validade')||'',ativo:true};
+    db.packages.push(pkg);
+    db.transactions.push({id:uid('tx'),tipo:'entrada',categoria:'pacote',descricao:`Pacote ${pkg.nome} — ${c.nome}`,valor,data:todayStr(),formaPagamento:'pix',pacoteId:pkg.id,criadoEm:Date.now()});
+    saveDB(); closeModal(); toast('Pacote registrado.','ok'); render();
+  });
+}
+
+/* ============================================================
+   SERVIÇOS
+============================================================ */
+function renderServicos(){
+  const q=state.services.search.trim().toLowerCase();
+  let list=db.services.slice().sort((a,b)=>a.nome.localeCompare(b.nome));
+  if(q) list=list.filter(s=>(s.nome+s.categoria).toLowerCase().includes(q));
+  return `
+  <div class="toolbar">
+    <div class="search-input">${icon('search')}<input id="servicos-search" placeholder="Buscar serviço" value="${esc(state.services.search)}"></div>
+    <div class="spacer"></div>
+    <button class="btn btn-primary" data-action="new-service">${icon('plus',' stroke="white"')} Novo serviço</button>
+  </div>
+  ${list.length===0?emptyState('service','Nenhum serviço cadastrado','Cadastre os serviços oferecidos pela clínica (estética facial, corporal, massoterapia...).',`<button class="btn btn-primary" data-action="new-service">Novo serviço</button>`):
+  `<div class="grid grid-3">${list.map(s=>`
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div><span class="color-swatch" style="background:${s.cor}"></span><b>${esc(s.nome)}</b></div>
+        <button class="btn-ghost btn-icon" data-edit-service="${s.id}">${icon('edit')}</button>
+      </div>
+      <div style="color:var(--dim);font-size:12px;margin:6px 0 12px;">${esc(s.categoria||'Sem categoria')}</div>
+      <div class="kv-list"><div><span>Duração</span><b>${s.duracao} min</b></div><div><span>Preço</span><b>${fmtMoney(s.preco)}</b></div></div>
+    </div>`).join('')}</div>`}
+  `;
+}
+function openServiceModal(id){
+  const editing=id?getService(id):null;
+  const v=editing||{nome:'',categoria:'',duracao:30,preco:'',cor:PALETTE[db.services.length%PALETTE.length],ativo:true};
+  openModal(`<div class="modal-box"><div class="modal-head"><h3>${editing?'Editar serviço':'Novo serviço'}</h3><button class="btn-ghost btn-icon" data-close-modal>${icon('x')}</button></div>
+  <form id="form-service"><div class="modal-body">
+    <div class="field"><label>Nome do serviço *</label><input name="nome" required value="${esc(v.nome)}"></div>
+    <div class="field"><label>Categoria</label><input name="categoria" list="cat-list" value="${esc(v.categoria)}" placeholder="Ex: Estética Facial, Massoterapia, Estética Corporal">
+      <datalist id="cat-list"><option>Estética Facial</option><option>Estética Corporal</option><option>Massoterapia</option><option>Depilação</option></datalist>
+    </div>
+    <div class="field-row"><div class="field"><label>Duração (min)</label><input type="number" min="5" step="5" name="duracao" value="${v.duracao}" required></div>
+    <div class="field"><label>Preço (R$)</label><input type="number" step="0.01" name="preco" value="${v.preco}" required></div></div>
+    <div class="field"><label>Cor na agenda</label><div class="color-picker">${PALETTE.map(c=>`<span style="background:${c}" class="${v.cor===c?'sel':''}" data-color="${c}"></span>`).join('')}<input type="hidden" name="cor" value="${v.cor}"></div></div>
+    ${editing?`<label class="checkline"><input type="checkbox" name="ativo" ${v.ativo!==false?'checked':''}> Serviço ativo</label>`:''}
+  </div><div class="modal-foot">
+    ${editing?`<button type="button" class="btn btn-danger" data-action="del-service" data-id="${editing.id}" style="margin-right:auto;">${icon('trash')} Excluir</button>`:''}
+    <button type="button" class="btn btn-outline" data-close-modal>Cancelar</button><button type="submit" class="btn btn-primary">${icon('check')} Salvar</button>
+  </div></form></div>`);
+  document.querySelectorAll('#modal-root .color-picker span').forEach(sw=>sw.addEventListener('click',()=>{
+    document.querySelectorAll('#modal-root .color-picker span').forEach(x=>x.classList.remove('sel')); sw.classList.add('sel');
+    document.querySelector('#modal-root [name=cor]').value=sw.dataset.color;
+  }));
+  document.getElementById('form-service').addEventListener('submit',e=>{
+    e.preventDefault(); const fd=new FormData(e.target);
+    const rec={nome:fd.get('nome').trim(),categoria:fd.get('categoria').trim(),duracao:Number(fd.get('duracao')),preco:parseFloat(fd.get('preco'))||0,cor:fd.get('cor'),ativo: editing? fd.get('ativo')==='on' : true};
+    if(!rec.nome){ toast('Informe o nome do serviço.','err'); return; }
+    if(editing){ Object.assign(editing,rec); } else{ db.services.push({id:uid('srv'),...rec}); }
+    saveDB(); closeModal(); toast('Serviço salvo.','ok'); render();
+  });
+}
+function deleteService(id){ db.services=db.services.filter(s=>s.id!==id); saveDB(); closeModal(); toast('Serviço removido.','ok'); render(); }
+
+/* ============================================================
+   PROFISSIONAIS
+============================================================ */
+function renderProfissionais(){
+  const list=db.professionals.slice().sort((a,b)=>a.nome.localeCompare(b.nome));
+  return `
+  <div class="toolbar"><div class="spacer"></div><button class="btn btn-primary" data-action="new-prof">${icon('plus',' stroke="white"')} Novo profissional</button></div>
+  ${list.length===0?emptyState('briefcase','Nenhum profissional cadastrado','Cadastre os profissionais/terapeutas da clínica.',`<button class="btn btn-primary" data-action="new-prof">Novo profissional</button>`):
+  `<div class="grid grid-3">${list.map(p=>{
+    const atendimentos=db.appointments.filter(a=>a.profissionalId===p.id&&a.status==='concluido').length;
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div style="display:flex;align-items:center;gap:10px;"><div class="avatar" style="background:${p.cor}22;color:${p.cor}">${initials(p.nome)}</div><b>${esc(p.nome)}</b></div>
+        <button class="btn-ghost btn-icon" data-edit-prof="${p.id}">${icon('edit')}</button>
+      </div>
+      <div style="color:var(--dim);font-size:12px;margin:8px 0;">${esc(p.especialidades||'—')}</div>
+      <div class="kv-list"><div><span>Comissão</span><b>${p.comissao||0}%</b></div><div><span>Atendimentos concluídos</span><b>${atendimentos}</b></div>
+      <div><span>Status</span><b>${p.ativo!==false?'Ativo':'Inativo'}</b></div></div>
+    </div>`;
+  }).join('')}</div>`}
+  `;
+}
+function openProfModal(id){
+  const editing=id?getProf(id):null;
+  const v=editing||{nome:'',telefone:'',especialidades:'',comissao:0,cor:PALETTE[db.professionals.length%PALETTE.length],ativo:true,diasTrabalho:[1,2,3,4,5],horaInicio:'08:00',horaFim:'18:00'};
+  openModal(`<div class="modal-box"><div class="modal-head"><h3>${editing?'Editar profissional':'Novo profissional'}</h3><button class="btn-ghost btn-icon" data-close-modal>${icon('x')}</button></div>
+  <form id="form-prof"><div class="modal-body">
+    <div class="field"><label>Nome completo *</label><input name="nome" required value="${esc(v.nome)}"></div>
+    <div class="field-row"><div class="field"><label>Telefone</label><input name="telefone" value="${esc(v.telefone)}"></div>
+    <div class="field"><label>Comissão (%)</label><input type="number" min="0" max="100" name="comissao" value="${v.comissao}"></div></div>
+    <div class="field"><label>Especialidades</label><input name="especialidades" value="${esc(v.especialidades)}" placeholder="Ex: Massagem relaxante, Drenagem linfática"></div>
+    <div class="field-row"><div class="field"><label>Início do expediente</label><input type="time" name="horaInicio" value="${v.horaInicio}"></div>
+    <div class="field"><label>Fim do expediente</label><input type="time" name="horaFim" value="${v.horaFim}"></div></div>
+    <div class="field"><label>Dias de trabalho</label><div class="chip-select" id="dias-trabalho">${DOW.map((d,i)=>`<button type="button" data-dia="${i}" class="${v.diasTrabalho.includes(i)?'active':''}">${d}</button>`).join('')}</div></div>
+    <div class="field"><label>Cor na agenda</label><div class="color-picker">${PALETTE.map(c=>`<span style="background:${c}" class="${v.cor===c?'sel':''}" data-color="${c}"></span>`).join('')}<input type="hidden" name="cor" value="${v.cor}"></div></div>
+    ${editing?`<label class="checkline"><input type="checkbox" name="ativo" ${v.ativo!==false?'checked':''}> Profissional ativo</label>`:''}
+  </div><div class="modal-foot">
+    ${editing?`<button type="button" class="btn btn-danger" data-action="del-prof" data-id="${editing.id}" style="margin-right:auto;">${icon('trash')} Excluir</button>`:''}
+    <button type="button" class="btn btn-outline" data-close-modal>Cancelar</button><button type="submit" class="btn btn-primary">${icon('check')} Salvar</button>
+  </div></form></div>`);
+  let dias=new Set(v.diasTrabalho);
+  document.querySelectorAll('#dias-trabalho button').forEach(b=>b.addEventListener('click',()=>{ const d=Number(b.dataset.dia); if(dias.has(d)){dias.delete(d);b.classList.remove('active');}else{dias.add(d);b.classList.add('active');} }));
+  document.querySelectorAll('#modal-root .color-picker span').forEach(sw=>sw.addEventListener('click',()=>{
+    document.querySelectorAll('#modal-root .color-picker span').forEach(x=>x.classList.remove('sel')); sw.classList.add('sel');
+    document.querySelector('#modal-root [name=cor]').value=sw.dataset.color;
+  }));
+  document.getElementById('form-prof').addEventListener('submit',e=>{
+    e.preventDefault(); const fd=new FormData(e.target);
+    const rec={nome:fd.get('nome').trim(),telefone:fd.get('telefone').trim(),especialidades:fd.get('especialidades').trim(),comissao:Number(fd.get('comissao'))||0,cor:fd.get('cor'),horaInicio:fd.get('horaInicio'),horaFim:fd.get('horaFim'),diasTrabalho:Array.from(dias),ativo:editing?fd.get('ativo')==='on':true};
+    if(!rec.nome){ toast('Informe o nome do profissional.','err'); return; }
+    if(editing){ Object.assign(editing,rec); } else{ db.professionals.push({id:uid('prof'),...rec}); }
+    saveDB(); closeModal(); toast('Profissional salvo.','ok'); render();
+  });
+}
+function deleteProf(id){ db.professionals=db.professionals.filter(p=>p.id!==id); saveDB(); closeModal(); toast('Profissional removido.','ok'); render(); }
+
+/* ============================================================
+   FINANCEIRO
+============================================================ */
+function renderFinanceiro(){
+  const f=state.financeiro;
+  const range=f.periodo;
+  const txs=db.transactions.filter(t=>t.data>=range.ini&&t.data<=range.fim);
+  const entradas=sumPaid(txs.filter(t=>t.tipo==='entrada'));
+  const saidas=sumPaid(txs.filter(t=>t.tipo==='saida'));
+  const aReceber=db.appointments.filter(a=>!a.pago && a.status!=='cancelado' && a.data>=range.ini && a.data<=range.fim).reduce((s,a)=>s+(Number(a.valor)||0),0);
+
+  return `
+  <div class="toolbar">
+    <div class="chip-select">
+      <button data-fin-tab="resumo" class="${f.tab==='resumo'?'active':''}">Resumo</button>
+      <button data-fin-tab="lancamentos" class="${f.tab==='lancamentos'?'active':''}">Lançamentos</button>
+      <button data-fin-tab="areceber" class="${f.tab==='areceber'?'active':''}">A receber</button>
+      <button data-fin-tab="comissoes" class="${f.tab==='comissoes'?'active':''}">Comissões</button>
+    </div>
+    <div class="spacer"></div>
+    <input type="date" id="fin-ini" value="${range.ini}" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);">
+    <span style="color:var(--dim)">até</span>
+    <input type="date" id="fin-fim" value="${range.fim}" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);">
+    ${f.tab==='lancamentos'?`<button class="btn btn-primary btn-sm" data-action="new-tx">${icon('plus',' stroke="white"')} Lançamento</button>`:''}
+  </div>
+  <div class="grid grid-3">
+    ${statCard('Receitas no período',fmtMoney(entradas),'money','entradas confirmadas','success')}
+    ${statCard('Despesas no período',fmtMoney(saidas),'money','saídas registradas','warning')}
+    ${statCard('Saldo',fmtMoney(entradas-saidas),'chart',`a receber: ${fmtMoney(aReceber)}`, entradas-saidas>=0?'primary':'warning')}
+  </div>
+  <div style="margin-top:18px;">
+  ${f.tab==='resumo'?renderFinResumo(range):f.tab==='lancamentos'?renderFinLancamentos(txs):f.tab==='areceber'?renderFinAReceber(range):renderFinComissoes(range)}
+  </div>`;
+}
+function renderFinResumo(range){
+  const byCat={};
+  db.transactions.filter(t=>t.data>=range.ini&&t.data<=range.fim&&t.tipo==='saida').forEach(t=>{byCat[t.categoria]=(byCat[t.categoria]||0)+Number(t.valor);});
+  const byServ={};
+  db.appointments.filter(a=>a.pago&&a.data>=range.ini&&a.data<=range.fim).forEach(a=>{const s=getService(a.servicoId); const k=s?s.nome:'Outro'; byServ[k]=(byServ[k]||0)+Number(a.valor);});
+  const catRows=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const servRows=Object.entries(byServ).sort((a,b)=>b[1]-a[1]);
+  return `<div class="grid grid-2">
+    <div class="card"><h3 style="font-size:13.5px;margin-bottom:12px;">Despesas por categoria</h3>${catRows.length===0?`<p style="color:var(--dim);font-size:12.5px;">Sem despesas no período.</p>`:catRows.map(([k,v])=>barRow(EXP_CAT_LABEL[k]||k,v,Math.max(...catRows.map(r=>r[1])))).join('')}</div>
+    <div class="card"><h3 style="font-size:13.5px;margin-bottom:12px;">Receita por serviço</h3>${servRows.length===0?`<p style="color:var(--dim);font-size:12.5px;">Sem receitas no período.</p>`:servRows.map(([k,v])=>barRow(k,v,Math.max(...servRows.map(r=>r[1])))).join('')}</div>
+  </div>`;
+}
+function barRow(label,val,max){ return `<div style="margin-bottom:9px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span>${esc(label)}</span><b>${fmtMoney(val)}</b></div><div style="background:var(--surface-2);border-radius:6px;height:7px;"><div style="width:${(val/max)*100}%;background:var(--primary);height:100%;border-radius:6px;"></div></div></div>`; }
+const EXP_CAT_LABEL={aluguel:'Aluguel',produtos:'Produtos',salarios:'Salários',marketing:'Marketing',contas:'Contas (água/luz/internet)',manutencao:'Manutenção',comissao:'Comissão',outros:'Outros'};
+function renderFinLancamentos(txs){
+  const list=txs.slice().sort((a,b)=>b.data.localeCompare(a.data));
+  if(list.length===0) return emptyState('money','Nenhum lançamento','Registre entradas e saídas financeiras.');
+  return `<div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th>Pagamento</th><th>Valor</th><th></th></tr></thead>
+  <tbody>${list.map(t=>`<tr><td>${fmtDate(t.data)}</td><td><span class="badge ${t.tipo==='entrada'?'badge-pago':'badge-faltou'}">${t.tipo==='entrada'?'Entrada':'Saída'}</span></td>
+  <td>${esc(EXP_CAT_LABEL[t.categoria]||t.categoria)}</td><td>${esc(t.descricao)}</td><td>${esc(PAY_LABEL[t.formaPagamento]||'—')}</td>
+  <td style="color:${t.tipo==='entrada'?'var(--success)':'var(--danger)'};font-weight:700;">${t.tipo==='entrada'?'+':'-'} ${fmtMoney(t.valor)}</td>
+  <td style="text-align:right;">${t.agendamentoId?'':`<button class="btn-ghost btn-icon" data-del-tx="${t.id}">${icon('trash')}</button>`}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function renderFinAReceber(range){
+  const list=db.appointments.filter(a=>!a.pago&&a.status!=='cancelado'&&a.data>=range.ini&&a.data<=range.fim).sort((a,b)=>a.data.localeCompare(b.data));
+  if(list.length===0) return emptyState('money','Nada a receber','Todos os agendamentos do período estão pagos.');
+  return `<div class="table-wrap"><table><thead><tr><th>Data</th><th>Cliente</th><th>Serviço</th><th>Valor</th><th></th></tr></thead>
+  <tbody>${list.map(a=>{const c=getClient(a.clienteId),s=getService(a.servicoId);return `<tr><td>${fmtDate(a.data)}</td><td>${esc(c?c.nome:'—')}</td><td>${esc(s?s.nome:'—')}</td><td>${fmtMoney(a.valor)}</td>
+  <td style="text-align:right;"><button class="btn btn-sm btn-primary" data-mark-paid="${a.id}">Marcar como pago</button></td></tr>`;}).join('')}</tbody></table></div>`;
+}
+function renderFinComissoes(range){
+  const rows=activeProfs().map(p=>{
+    const list=db.appointments.filter(a=>a.profissionalId===p.id&&a.pago&&a.status!=='cancelado'&&a.data>=range.ini&&a.data<=range.fim);
+    const total=sumPaid(list); const comissao=total*(p.comissao||0)/100;
+    return {p,total,comissao,qtd:list.length};
+  });
+  if(rows.length===0) return emptyState('briefcase','Sem profissionais','Cadastre profissionais para calcular comissões.');
+  return `<div class="table-wrap"><table><thead><tr><th>Profissional</th><th>Atendimentos pagos</th><th>Faturamento</th><th>% Comissão</th><th>Valor da comissão</th></tr></thead>
+  <tbody>${rows.map(r=>`<tr><td>${esc(r.p.nome)}</td><td>${r.qtd}</td><td>${fmtMoney(r.total)}</td><td>${r.p.comissao||0}%</td><td style="font-weight:700;color:var(--primary-dark)">${fmtMoney(r.comissao)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function openTxModal(){
+  openModal(`<div class="modal-box"><div class="modal-head"><h3>Novo lançamento</h3><button class="btn-ghost btn-icon" data-close-modal>${icon('x')}</button></div>
+  <form id="form-tx"><div class="modal-body">
+    <div class="field"><label>Tipo</label><select name="tipo" id="tx-tipo"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></div>
+    <div class="field"><label>Categoria</label><select name="categoria" id="tx-cat"></select></div>
+    <div class="field"><label>Descrição</label><input name="descricao" required></div>
+    <div class="field-row"><div class="field"><label>Valor (R$)</label><input type="number" step="0.01" name="valor" required></div>
+    <div class="field"><label>Data</label><input type="date" name="data" value="${todayStr()}" required></div></div>
+    <div class="field"><label>Forma de pagamento</label><select name="formaPagamento">${Object.keys(PAY_LABEL).filter(k=>k!=='pacote').map(k=>`<option value="${k}">${PAY_LABEL[k]}</option>`).join('')}</select></div>
+  </div><div class="modal-foot"><button type="button" class="btn btn-outline" data-close-modal>Cancelar</button><button type="submit" class="btn btn-primary">${icon('check')} Salvar</button></div></form></div>`);
+  const catIn=['venda_produto','pacote','outros'], catOut=['aluguel','produtos','salarios','marketing','contas','manutencao','outros'];
+  function fillCat(){ const tipo=document.getElementById('tx-tipo').value; const cats=tipo==='entrada'?catIn:catOut; document.getElementById('tx-cat').innerHTML=cats.map(c=>`<option value="${c}">${EXP_CAT_LABEL[c]||c}</option>`).join(''); }
+  document.getElementById('tx-tipo').addEventListener('change',fillCat); fillCat();
+  document.getElementById('form-tx').addEventListener('submit',e=>{
+    e.preventDefault(); const fd=new FormData(e.target);
+    db.transactions.push({id:uid('tx'),tipo:fd.get('tipo'),categoria:fd.get('categoria'),descricao:fd.get('descricao').trim(),valor:parseFloat(fd.get('valor'))||0,data:fd.get('data'),formaPagamento:fd.get('formaPagamento'),criadoEm:Date.now()});
+    saveDB(); closeModal(); toast('Lançamento salvo.','ok'); render();
+  });
+}
+
+/* ============================================================
+   LEMBRETES
+============================================================ */
+function renderLembretes(){
+  const pend=pendingReminders();
+  const birthdays=upcomingBirthdays(14);
+  return `
+  <div class="section-title" style="margin-top:0;"><h3>Agendamentos próximos (48h) sem lembrete enviado</h3></div>
+  ${pend.length===0?emptyState('bell','Tudo em dia','Não há lembretes pendentes de envio no momento.'):
+  pend.map(a=>{
+    const c=getClient(a.clienteId), s=getService(a.servicoId);
+    const msg=`Olá ${c?c.nome:''}! 😊 Passando para lembrar do seu horário na ${db.settings.clinicaNome} em ${fmtDate(a.data)} às ${a.horaInicio} para ${s?s.nome:'seu atendimento'}. Até breve!`;
+    return `<div class="reminder-row">
+      <div class="avatar">${initials(c?c.nome:'?')}</div>
+      <div class="rr-main"><div class="rr-title">${esc(c?c.nome:'Cliente removido')}</div><div class="rr-sub">${fmtDate(a.data)} às ${a.horaInicio} · ${esc(s?s.nome:'')}</div></div>
+      ${c&&c.telefone?`<a class="btn btn-sm wa-btn" target="_blank" rel="noopener" href="${waLink(c.telefone,msg)}" data-mark-reminded="${a.id}">${icon('whatsapp')} Enviar lembrete</a>`:`<span style="color:var(--dim);font-size:12px;">sem telefone</span>`}
+      <button class="btn btn-ghost btn-sm" data-mark-reminded-only="${a.id}">Marcar como enviado</button>
+    </div>`;
+  }).join('')}
+  <div class="section-title"><h3>Aniversariantes (próximos 14 dias)</h3></div>
+  ${birthdays.length===0?emptyState('cake','Nenhum aniversário próximo','Nenhum cliente faz aniversário nos próximos 14 dias.'):
+  birthdays.map(c=>{
+    const msg=`Olá ${c.nome}! 🎉 A equipe da ${db.settings.clinicaNome} deseja um feliz aniversário! Que tal comemorar com um momento de autocuidado? Temos condições especiais para você essa semana.`;
+    return `<div class="reminder-row"><div class="avatar">${initials(c.nome)}</div>
+    <div class="rr-main"><div class="rr-title">${esc(c.nome)}</div><div class="rr-sub">${icon('cake')} ${c._diff===0?'É hoje!':'em '+c._diff+' dia(s)'} · ${fmtDate(c.nascimento).slice(0,5)}</div></div>
+    ${c.telefone?`<a class="btn btn-sm wa-btn" target="_blank" rel="noopener" href="${waLink(c.telefone,msg)}">${icon('whatsapp')} Parabenizar</a>`:`<span style="color:var(--dim);font-size:12px;">sem telefone</span>`}</div>`;
+  }).join('')}
+  `;
+}
+
+/* ============================================================
+   RELATÓRIOS
+============================================================ */
+function renderRelatorios(){
+  const range=state.relatorios.periodo;
+  const appts=db.appointments.filter(a=>a.data>=range.ini&&a.data<=range.fim);
+  const concl=appts.filter(a=>a.status==='concluido');
+  const faltou=appts.filter(a=>a.status==='faltou');
+  const cancel=appts.filter(a=>a.status==='cancelado');
+  const receita=sumPaid(db.transactions.filter(t=>t.tipo==='entrada'&&t.data>=range.ini&&t.data<=range.fim));
+  const despesa=sumPaid(db.transactions.filter(t=>t.tipo==='saida'&&t.data>=range.ini&&t.data<=range.fim));
+  const inactiveDays=45;
+  const inactive=db.clients.filter(c=>{
+    const last=db.appointments.filter(a=>a.clienteId===c.id).sort((a,b)=>b.data.localeCompare(a.data))[0];
+    if(!last) return true;
+    return (new Date()-parseISO(last.data))/86400000 > inactiveDays;
+  });
+  return `
+  <div class="toolbar">
+    <input type="date" id="rel-ini" value="${range.ini}" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);">
+    <span style="color:var(--dim)">até</span>
+    <input type="date" id="rel-fim" value="${range.fim}" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);">
+    <div class="spacer"></div>
+    <button class="btn btn-outline btn-sm" data-action="export-appts-csv">${icon('download')} Exportar agendamentos CSV</button>
+    <button class="btn btn-outline btn-sm" data-action="export-fin-csv">${icon('download')} Exportar financeiro CSV</button>
+  </div>
+  <div class="grid grid-4">
+    ${statCard('Atendimentos concluídos',concl.length,'calendar','','success')}
+    ${statCard('Faltas',faltou.length,'bell',appts.length?((faltou.length/appts.length)*100).toFixed(0)+'% do total':'','warning')}
+    ${statCard('Cancelamentos',cancel.length,'x','','info')}
+    ${statCard('Resultado (receita-despesa)',fmtMoney(receita-despesa),'chart',`receita: ${fmtMoney(receita)}`,'primary')}
+  </div>
+  <div class="section-title"><h3>Clientes inativos (sem atendimento há mais de ${inactiveDays} dias)</h3></div>
+  ${inactive.length===0?emptyState('users','Nenhum cliente inativo','Todos os clientes tiveram atendimento recente.'):
+  `<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Telefone</th><th>Último atendimento</th><th></th></tr></thead>
+  <tbody>${inactive.map(c=>{
+    const last=db.appointments.filter(a=>a.clienteId===c.id).sort((a,b)=>b.data.localeCompare(a.data))[0];
+    const msg=`Olá ${c.nome}! Sentimos sua falta na ${db.settings.clinicaNome} 💚 Que tal agendar um novo horário?`;
+    return `<tr><td>${esc(c.nome)}</td><td>${esc(c.telefone||'—')}</td><td>${last?fmtDate(last.data):'nunca veio'}</td>
+    <td style="text-align:right;">${c.telefone?`<a class="btn btn-sm wa-btn" target="_blank" rel="noopener" href="${waLink(c.telefone,msg)}">${icon('whatsapp')} Reengajar</a>`:''}</td></tr>`;
+  }).join('')}</tbody></table></div>`}
+  `;
+}
+
+/* ============================================================
+   CONFIGURAÇÕES
+============================================================ */
+function renderConfig(){
+  const s=db.settings;
+  return `
+  <div class="grid grid-2" style="align-items:start;">
+    <div class="card">
+      <h3 style="font-size:14px;margin-bottom:14px;">Dados da clínica</h3>
+      <form id="form-settings">
+        <div class="field"><label>Nome da clínica</label><input name="clinicaNome" value="${esc(s.clinicaNome)}"></div>
+        <div class="field"><label>Telefone</label><input name="telefone" value="${esc(s.telefone)}"></div>
+        <div class="field"><label>Endereço</label><input name="endereco" value="${esc(s.endereco)}"></div>
+        <div class="field-row"><div class="field"><label>Abertura</label><input type="time" name="horarioAbertura" value="${s.horarioAbertura}"></div>
+        <div class="field"><label>Fechamento</label><input type="time" name="horarioFechamento" value="${s.horarioFechamento}"></div></div>
+        <button class="btn btn-primary" type="submit">${icon('check')} Salvar dados</button>
+      </form>
+    </div>
+    <div class="card">
+      <h3 style="font-size:14px;margin-bottom:14px;">Segurança de acesso (PIN)</h3>
+      <p style="color:var(--dim);font-size:12.5px;margin:0 0 12px;">Protege o app com um PIN neste navegador (útil por conter dados de saúde de clientes).</p>
+      <form id="form-pin">
+        <label class="checkline" style="margin-bottom:10px;"><input type="checkbox" name="pinAtivo" ${s.pinAtivo?'checked':''}> Exigir PIN ao abrir o app</label>
+        <div class="field"><label>PIN (4 a 6 dígitos)</label><input name="pin" maxlength="6" inputmode="numeric" placeholder="Ex: 1234" value="${esc(s.pin)}"></div>
+        <button class="btn btn-primary" type="submit">${icon('check')} Salvar PIN</button>
+      </form>
+    </div>
+  </div>
+  <div class="grid grid-2" style="margin-top:16px;align-items:start;">
+    <div class="card">
+      <h3 style="font-size:14px;margin-bottom:8px;">Backup dos dados</h3>
+      <p style="color:var(--dim);font-size:12.5px;margin:0 0 14px;">Os dados ficam salvos apenas neste navegador. Exporte regularmente para não perder informações.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-outline" data-action="export-backup">${icon('download')} Exportar backup (.json)</button>
+        <label class="btn btn-outline" style="cursor:pointer;">${icon('upload')} Importar backup<input type="file" id="import-backup" accept=".json" style="display:none;"></label>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:14px;margin-bottom:8px;">Zona de risco</h3>
+      <p style="color:var(--dim);font-size:12.5px;margin:0 0 14px;">Ações abaixo não podem ser desfeitas.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-outline" data-action="seed-demo">Carregar dados de exemplo</button>
+        <button class="btn btn-danger" data-action="wipe-all">${icon('trash')} Apagar todos os dados</button>
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+/* ============================================================
+   MODAL / TOAST
+============================================================ */
+function openModal(html){ const root=document.getElementById('modal-root'); root.innerHTML=`<div class="modal-backdrop" data-close-modal></div>`+html; root.classList.remove('hidden'); }
+function closeModal(){ document.getElementById('modal-root').classList.add('hidden'); document.getElementById('modal-root').innerHTML=''; }
+function toast(msg,type){ const t=document.createElement('div'); t.className='toast '+(type==='err'?'err':type==='ok'?'ok':''); t.textContent=msg; document.getElementById('toast-root').appendChild(t); setTimeout(()=>t.remove(),3400); }
+
+/* ============================================================
+   DEMO DATA
+============================================================ */
+function seedDemo(){
+  db=defaultDB();
+  db.settings.clinicaNome='Clínica Viva Bem — Estética & Massoterapia';
+  db.settings.telefone='(11) 91234-5678';
+  db.settings.endereco='Rua das Flores, 123 — São Paulo/SP';
+  db.professionals=[
+    {id:uid('prof'),nome:'Ana Souza',telefone:'11988887777',especialidades:'Massagem relaxante, Drenagem linfática',comissao:35,cor:PALETTE[0],ativo:true,diasTrabalho:[1,2,3,4,5],horaInicio:'08:00',horaFim:'18:00'},
+    {id:uid('prof'),nome:'Carla Mendes',telefone:'11977776666',especialidades:'Limpeza de pele, Peeling',comissao:30,cor:PALETTE[1],ativo:true,diasTrabalho:[1,2,3,4,5,6],horaInicio:'09:00',horaFim:'19:00'},
+    {id:uid('prof'),nome:'Bruno Lima',telefone:'11966665555',especialidades:'Massoterapia esportiva',comissao:40,cor:PALETTE[2],ativo:true,diasTrabalho:[2,3,4,5,6],horaInicio:'10:00',horaFim:'20:00'},
+  ];
+  db.services=[
+    {id:uid('srv'),nome:'Massagem Relaxante',categoria:'Massoterapia',duracao:60,preco:150,cor:PALETTE[0],ativo:true},
+    {id:uid('srv'),nome:'Drenagem Linfática',categoria:'Massoterapia',duracao:50,preco:130,cor:PALETTE[2],ativo:true},
+    {id:uid('srv'),nome:'Limpeza de Pele',categoria:'Estética Facial',duracao:70,preco:180,cor:PALETTE[1],ativo:true},
+    {id:uid('srv'),nome:'Peeling Facial',categoria:'Estética Facial',duracao:40,preco:160,cor:PALETTE[4],ativo:true},
+    {id:uid('srv'),nome:'Massagem Modeladora',categoria:'Estética Corporal',duracao:50,preco:140,cor:PALETTE[5],ativo:true},
+  ];
+  const nomes=['Fernanda Alves','Juliana Costa','Patrícia Reis','Camila Nunes','Beatriz Santos','Larissa Dias','Renata Silva','Marcos Pereira','Gabriela Rocha','Vanessa Lopes','Tatiane Moura','Cláudia Freitas'];
+  db.clients=nomes.map((n,i)=>({id:uid('cli'),nome:n,telefone:'119'+String(80000000+i*111111).slice(0,8),email:n.toLowerCase().replace(/\s/g,'.')+'@email.com',nascimento:`19${80+i%20}-${String((i%12)+1).padStart(2,'0')}-${String((i%27)+1).padStart(2,'0')}`,cpf:'',endereco:'',sexo:i%5===0?'M':'F',observacoes:'',restricoes:i%7===0?'Alérgica a óleo de amêndoas':'',ativo:true,criadoEm:Date.now()}));
+  const today=todayStr();
+  for(let d=-14; d<=7; d++){
+    const date=addDays(today,d);
+    const dow=parseISO(date).getDay();
+    const numAppts = (dow===0)?0: 1+Math.floor(Math.random()*4);
+    for(let i=0;i<numAppts;i++){
+      const prof=db.professionals[Math.floor(Math.random()*db.professionals.length)];
+      if(!prof.diasTrabalho.includes(dow)) continue;
+      const svc=db.services[Math.floor(Math.random()*db.services.length)];
+      const cli=db.clients[Math.floor(Math.random()*db.clients.length)];
+      const startH=9+Math.floor(Math.random()*8);
+      const horaInicio=String(startH).padStart(2,'0')+':00';
+      const horaFim=minToTime(timeToMin(horaInicio)+svc.duracao);
+      const isPast=d<0;
+      let status='agendado';
+      if(isPast) status = Math.random()<0.85?'concluido':(Math.random()<0.5?'faltou':'cancelado');
+      else if(d===0) status = Math.random()<0.6?'confirmado':'agendado';
+      const pago = status==='concluido' && Math.random()<0.9;
+      const appt={id:uid('appt'),clienteId:cli.id,servicoId:svc.id,profissionalId:prof.id,data:date,horaInicio,horaFim,status,valor:svc.preco,formaPagamento:['pix','dinheiro','cartao_credito','cartao_debito'][Math.floor(Math.random()*4)],pago,observacoes:'',lembreteEnviado:isPast,criadoEm:Date.now()};
+      db.appointments.push(appt);
+      if(pago){ db.transactions.push({id:uid('tx'),tipo:'entrada',categoria:'atendimento',descricao:`${svc.nome} — ${cli.nome}`,valor:svc.preco,data:date,formaPagamento:appt.formaPagamento,agendamentoId:appt.id,profissionalId:prof.id,criadoEm:Date.now()}); }
+    }
+  }
+  const despesas=[['aluguel','Aluguel do espaço',2200],['produtos','Compra de produtos estéticos',680],['contas','Conta de energia',340],['marketing','Anúncios redes sociais',250],['manutencao','Manutenção maca',120]];
+  despesas.forEach((d,i)=>db.transactions.push({id:uid('tx'),tipo:'saida',categoria:d[0],descricao:d[1],valor:d[2],data:addDays(today,-i*3),formaPagamento:'pix',criadoEm:Date.now()}));
+  db.packages.push({id:uid('pkg'),clienteId:db.clients[0].id,servicoId:db.services[0].id,nome:db.services[0].nome,totalSessoes:10,sessoesRestantes:6,valorPago:1300,dataCompra:addDays(today,-20),validade:'',ativo:true});
+  saveDB(); toast('Dados de exemplo carregados.','ok'); render();
+}
+function wipeAll(){ db=defaultDB(); saveDB(); toast('Todos os dados foram apagados.','ok'); render(); }
+
+/* ============================================================
+   EVENT DELEGATION
+============================================================ */
+function bindGlobalEvents(){
+  document.body.addEventListener('click',e=>{
+    const navBtn=e.target.closest('[data-nav]'); if(navBtn){ setView(navBtn.dataset.nav); return; }
+    if(e.target.closest('#hamburger')){ document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebar-overlay').classList.toggle('show'); return; }
+    if(e.target.closest('#sidebar-overlay')){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('show'); return; }
+    if(e.target.closest('#btn-theme')){ toggleTheme(); return; }
+    if(e.target.closest('#btn-print')){ window.print(); return; }
+    if(e.target.closest('#btn-new-appt')){ openApptModal(null); return; }
+    if(e.target.closest('[data-close-modal]')){ closeModal(); return; }
+
+    const agendaMode=e.target.closest('[data-agenda-mode]'); if(agendaMode){ state.agenda.mode=agendaMode.dataset.agendaMode; render(); return; }
+    const agendaNav=e.target.closest('[data-agenda-nav]'); if(agendaNav){ navAgenda(Number(agendaNav.dataset.agendaNav)); return; }
+    if(e.target.closest('[data-agenda-today]')){ state.agenda.date=todayStr(); render(); return; }
+    const daycell=e.target.closest('[data-daycell]'); if(daycell && !e.target.closest('.appt-card')){
+      if(state.agenda.mode==='mes'){ state.agenda.date=daycell.dataset.daycell; state.agenda.mode='dia'; render(); return; }
+      openApptModal(null,daycell.dataset.daycell,daycell.dataset.newprof); return;
+    }
+    const apptEl=e.target.closest('[data-appt]'); if(apptEl){ openApptModal(apptEl.dataset.appt); return; }
+    if(e.target.closest('[data-action="del-appt"]')){ const b=e.target.closest('[data-action="del-appt"]'); if(confirm('Excluir este agendamento?')) deleteAppt(b.dataset.id); return; }
+
+    if(e.target.closest('[data-action="new-client"]')){ openClientModal(null); return; }
+    const editClientBtn=e.target.closest('[data-edit-client]'); if(editClientBtn){ openClientModal(editClientBtn.dataset.editClient); return; }
+    const clientOpen=e.target.closest('[data-client-open]'); if(clientOpen){ state.clientDetail={id:clientOpen.dataset.clientOpen,tab:'agendamentos'}; state.view='__clientdetail'; renderClientDetailView(); return; }
+    if(e.target.closest('[data-action="del-client"]')){ const b=e.target.closest('[data-action="del-client"]'); if(confirm('Excluir este cliente? Esta ação não pode ser desfeita.')) deleteClient(b.dataset.id); return; }
+    const clientTab=e.target.closest('[data-client-tab]'); if(clientTab){ state.clientDetail.tab=clientTab.dataset.clientTab; renderClientDetailView(); return; }
+    if(e.target.closest('[data-action="new-package"]')){ const b=e.target.closest('[data-action="new-package"]'); openPackageModal(b.dataset.client); return; }
+
+    if(e.target.closest('[data-action="new-service"]')){ openServiceModal(null); return; }
+    const editSvc=e.target.closest('[data-edit-service]'); if(editSvc){ openServiceModal(editSvc.dataset.editService); return; }
+    if(e.target.closest('[data-action="del-service"]')){ const b=e.target.closest('[data-action="del-service"]'); if(confirm('Excluir este serviço?')) deleteService(b.dataset.id); return; }
+
+    if(e.target.closest('[data-action="new-prof"]')){ openProfModal(null); return; }
+    const editProf=e.target.closest('[data-edit-prof]'); if(editProf){ openProfModal(editProf.dataset.editProf); return; }
+    if(e.target.closest('[data-action="del-prof"]')){ const b=e.target.closest('[data-action="del-prof"]'); if(confirm('Excluir este profissional?')) deleteProf(b.dataset.id); return; }
+
+    const finTab=e.target.closest('[data-fin-tab]'); if(finTab){ state.financeiro.tab=finTab.dataset.finTab; render(); return; }
+    if(e.target.closest('[data-action="new-tx"]')){ openTxModal(); return; }
+    const delTx=e.target.closest('[data-del-tx]'); if(delTx){ if(confirm('Excluir este lançamento?')){ db.transactions=db.transactions.filter(t=>t.id!==delTx.dataset.delTx); saveDB(); toast('Lançamento excluído.','ok'); render(); } return; }
+    const markPaid=e.target.closest('[data-mark-paid]'); if(markPaid){ const a=db.appointments.find(x=>x.id===markPaid.dataset.markPaid); if(a){ a.pago=true; syncFinanceForAppointment(a); saveDB(); toast('Pagamento registrado.','ok'); render(); } return; }
+
+    const markReminded=e.target.closest('[data-mark-reminded]'); if(markReminded){ const a=db.appointments.find(x=>x.id===markReminded.dataset.markReminded); if(a){ a.lembreteEnviado=true; saveDB(); } setTimeout(render,300); return; }
+    const markRemindedOnly=e.target.closest('[data-mark-reminded-only]'); if(markRemindedOnly){ const a=db.appointments.find(x=>x.id===markRemindedOnly.dataset.markRemindedOnly); if(a){ a.lembreteEnviado=true; saveDB(); toast('Marcado como enviado.','ok'); render(); } return; }
+
+    if(e.target.closest('[data-action="export-appts-csv"]')){ exportAppointmentsCSV(); return; }
+    if(e.target.closest('[data-action="export-fin-csv"]')){ exportFinanceCSV(); return; }
+    if(e.target.closest('[data-action="export-backup"]')){ downloadFile('backup-clinica-'+todayStr()+'.json', JSON.stringify(db,null,2), 'application/json'); toast('Backup exportado.','ok'); return; }
+    if(e.target.closest('[data-action="seed-demo"]')){ if(confirm('Isso substituirá os dados atuais por dados de demonstração. Continuar?')) seedDemo(); return; }
+    if(e.target.closest('[data-action="wipe-all"]')){ if(confirm('Tem certeza que deseja apagar TODOS os dados? Esta ação não pode ser desfeita.')) wipeAll(); return; }
+  });
+
+  document.body.addEventListener('change',e=>{
+    if(e.target.id==='clientes-search'){ state.clients.search=e.target.value; render(); return; }
+    if(e.target.id==='servicos-search'){ state.services.search=e.target.value; render(); return; }
+    if(e.target.id==='agenda-prof-filter'){ state.agenda.profFilter=e.target.value; render(); return; }
+    if(e.target.id==='fin-ini'||e.target.id==='fin-fim'){ state.financeiro.periodo={ini:document.getElementById('fin-ini').value,fim:document.getElementById('fin-fim').value}; render(); return; }
+    if(e.target.id==='rel-ini'||e.target.id==='rel-fim'){ state.relatorios.periodo={ini:document.getElementById('rel-ini').value,fim:document.getElementById('rel-fim').value}; render(); return; }
+    if(e.target.id==='import-backup'){ importBackup(e.target.files[0]); return; }
+  });
+  document.body.addEventListener('input',e=>{
+    if(e.target.id==='clientes-search'){ state.clients.search=e.target.value; renderClientesInline(); return; }
+    if(e.target.id==='servicos-search'){ state.services.search=e.target.value; renderServicosInline(); return; }
+  });
+  document.body.addEventListener('submit',e=>{
+    if(e.target.id==='form-settings'){
+      e.preventDefault(); const fd=new FormData(e.target);
+      Object.assign(db.settings,{clinicaNome:fd.get('clinicaNome').trim()||'Minha Clínica',telefone:fd.get('telefone').trim(),endereco:fd.get('endereco').trim(),horarioAbertura:fd.get('horarioAbertura'),horarioFechamento:fd.get('horarioFechamento')});
+      saveDB(); toast('Dados da clínica salvos.','ok'); render(); return;
+    }
+    if(e.target.id==='form-pin'){
+      e.preventDefault(); const fd=new FormData(e.target);
+      const pinAtivo=fd.get('pinAtivo')==='on'; const pin=(fd.get('pin')||'').trim();
+      if(pinAtivo && !/^\d{4,6}$/.test(pin)){ toast('O PIN deve ter de 4 a 6 dígitos numéricos.','err'); return; }
+      Object.assign(db.settings,{pinAtivo,pin}); saveDB(); toast('Configuração de PIN salva.','ok'); render(); return;
+    }
+  });
+  document.getElementById('lock-submit').addEventListener('click',tryUnlock);
+  document.getElementById('lock-pin').addEventListener('keydown',e=>{ if(e.key==='Enter') tryUnlock(); });
+}
+function navAgenda(dir){
+  const a=state.agenda;
+  if(a.mode==='mes'){ const d=parseISO(a.date); d.setMonth(d.getMonth()+dir); a.date=toISO(d); }
+  else if(a.mode==='dia'){ a.date=addDays(a.date,dir); }
+  render();
+}
+function renderClientDetailView(){
+  const main=document.getElementById('main-content');
+  document.getElementById('view-title').textContent='Cliente';
+  main.innerHTML=renderClientDetail(state.clientDetail.id);
+  main.scrollTop=0;
+}
+function renderClientesInline(){ if(state.view==='clientes'){ document.getElementById('main-content').innerHTML=renderClientes(); } }
+function renderServicosInline(){ if(state.view==='servicos'){ document.getElementById('main-content').innerHTML=renderServicos(); } }
+
+function exportAppointmentsCSV(){
+  const rows=db.appointments.map(a=>{ const c=getClient(a.clienteId),s=getService(a.servicoId),p=getProf(a.profissionalId);
+    return [a.data,a.horaInicio,a.horaFim,c?c.nome:'',s?s.nome:'',p?p.nome:'',STATUS_LABEL[a.status],a.valor,a.pago?'Pago':'Pendente']; });
+  downloadFile('agendamentos-'+todayStr()+'.csv', toCSV(rows,['Data','Início','Fim','Cliente','Serviço','Profissional','Status','Valor','Pagamento']), 'text/csv');
+}
+function exportFinanceCSV(){
+  const rows=db.transactions.map(t=>[t.data,t.tipo==='entrada'?'Entrada':'Saída',EXP_CAT_LABEL[t.categoria]||t.categoria,t.descricao,t.valor,PAY_LABEL[t.formaPagamento]||'']);
+  downloadFile('financeiro-'+todayStr()+'.csv', toCSV(rows,['Data','Tipo','Categoria','Descrição','Valor','Pagamento']), 'text/csv');
+}
+function importBackup(file){
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const parsed=JSON.parse(reader.result);
+      if(!parsed || typeof parsed!=='object' || !Array.isArray(parsed.clients)) throw new Error('formato inválido');
+      db=Object.assign(defaultDB(),parsed,{settings:Object.assign(defaultDB().settings,parsed.settings||{})});
+      saveDB(); toast('Backup importado com sucesso.','ok'); render();
+    }catch(err){ toast('Arquivo de backup inválido.','err'); }
+  };
+  reader.readAsText(file);
+}
+
+/* ============================================================
+   THEME / LOCK
+============================================================ */
+function toggleTheme(){
+  const root=document.documentElement;
+  const cur=root.getAttribute('data-theme')==='dark'?'dark':'light';
+  const next=cur==='dark'?'light':'dark';
+  root.setAttribute('data-theme',next);
+  db.settings.tema=next; saveDB();
+  updateThemeIcon();
+}
+function updateThemeIcon(){
+  const dark=document.documentElement.getAttribute('data-theme')==='dark';
+  document.getElementById('btn-theme').innerHTML = dark? icon('sun') : icon('moon');
+}
+function tryUnlock(){
+  const val=document.getElementById('lock-pin').value;
+  if(val===db.settings.pin){ document.getElementById('lock-screen').classList.add('hidden'); }
+  else{ document.getElementById('lock-error').textContent='PIN incorreto.'; document.getElementById('lock-pin').value=''; }
+}
+
+/* ============================================================
+   INIT
+============================================================ */
+function init(){
+  db=loadDB();
+  document.documentElement.setAttribute('data-theme', db.settings.tema==='dark'?'dark':'light');
+  updateThemeIcon();
+  bindGlobalEvents();
+  if(db.settings.pinAtivo && db.settings.pin){
+    document.getElementById('lock-screen').classList.remove('hidden');
+    document.getElementById('lock-clinic-name').textContent=db.settings.clinicaNome||'Clínica';
+  }
+  render();
+}
+document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+</body>
+</html>
