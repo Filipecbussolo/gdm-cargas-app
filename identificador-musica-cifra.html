@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Identificador de Música e Cifra — GDM</title>
+<style>
+  :root{
+    --bg:#12151a;
+    --panel:#1b2028;
+    --panel-2:#232a35;
+    --border:#323b49;
+    --text:#e9e7e1;
+    --dim:#8b93a3;
+    --amber:#f2a93b;
+    --cyan:#4fb8c4;
+    --red:#e2574c;
+    --green:#5cb87a;
+    --mono: 'SF Mono','Cascadia Code','Roboto Mono',Consolas,monospace;
+    --sans: 'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;min-height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  #app{display:flex;flex-direction:column;min-height:100vh;}
+
+  #navbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 18px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;
+  }
+  #navbar .brand{display:flex;align-items:baseline;gap:10px;}
+  #navbar .brand .tag{
+    font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--bg);
+    background:var(--amber);padding:2px 7px;border-radius:2px;font-weight:700;
+  }
+  #navbar h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.02em;}
+  #btn-config{
+    background:var(--panel-2);border:1px solid var(--border);color:var(--dim);
+    padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;
+  }
+  #btn-config:hover{border-color:var(--amber);color:var(--amber);}
+
+  #main{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 16px 60px;}
+
+  .card{
+    width:100%;max-width:520px;background:var(--panel);border:1px solid var(--border);
+    border-radius:12px;padding:20px;margin-bottom:16px;
+  }
+  .card h2{margin:0 0 12px;font-size:14px;color:var(--dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;}
+
+  /* ---- LISTEN PANEL ---- */
+  #listen-panel{display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;}
+  #mic-btn{
+    width:120px;height:120px;border-radius:50%;border:none;cursor:pointer;
+    background:radial-gradient(circle at 35% 30%, #ffcf7a, var(--amber));
+    color:#1a1200;font-size:44px;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 0 0 rgba(242,169,59,.5);transition:transform .15s ease;
+  }
+  #mic-btn:active{transform:scale(.96);}
+  #mic-btn.listening{
+    animation:pulse 1.4s infinite;
+    background:radial-gradient(circle at 35% 30%, #ff8f7a, var(--red));
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(226,87,76,.55);}
+    70%{box-shadow:0 0 0 26px rgba(226,87,76,0);}
+    100%{box-shadow:0 0 0 0 rgba(226,87,76,0);}
+  }
+  #status-text{font-size:13px;color:var(--dim);font-family:var(--mono);min-height:18px;}
+  #level-bar{width:100%;max-width:320px;height:6px;background:var(--panel-2);border-radius:3px;overflow:hidden;}
+  #level-fill{height:100%;width:0%;background:var(--cyan);transition:width .08s linear;}
+
+  /* ---- RESULT ---- */
+  #result-panel{display:none;}
+  .result-head{display:flex;gap:14px;align-items:center;}
+  .result-head img{width:76px;height:76px;border-radius:8px;object-fit:cover;background:var(--panel-2);flex-shrink:0;}
+  .result-head .info{min-width:0;}
+  .result-head .title{font-size:17px;font-weight:700;margin:0 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .result-head .artist{font-size:13.5px;color:var(--dim);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .result-head .album{font-size:11.5px;color:var(--dim);font-family:var(--mono);margin-top:4px;}
+
+  .link-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;}
+  .link-btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    padding:12px 10px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;
+    text-align:center;
+  }
+  .link-btn:hover{border-color:var(--amber);color:var(--amber);}
+  .link-btn.full{grid-column:1/-1;}
+
+  #lyrics-box{
+    margin-top:14px;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;
+    padding:14px;white-space:pre-wrap;font-size:13px;line-height:1.6;max-height:340px;overflow-y:auto;
+    display:none;
+  }
+  #lyrics-status{font-size:12px;color:var(--dim);font-family:var(--mono);margin-top:10px;}
+
+  #btn-reset{margin-top:16px;background:transparent;border:1px solid var(--border);color:var(--dim);padding:8px 14px;border-radius:6px;font-size:12.5px;cursor:pointer;width:100%;}
+  #btn-reset:hover{border-color:var(--red);color:var(--red);}
+
+  .msg{font-size:13px;padding:10px 12px;border-radius:8px;margin-top:10px;display:none;}
+  .msg.error{background:rgba(226,87,76,.12);color:var(--red);border:1px solid rgba(226,87,76,.4);}
+  .msg.warn{background:rgba(242,169,59,.12);color:var(--amber);border:1px solid rgba(242,169,59,.4);}
+
+  /* ---- CONFIG MODAL ---- */
+  #config-overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;
+    align-items:center;justify-content:center;padding:16px;
+  }
+  #config-modal{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;width:100%;max-width:420px;}
+  #config-modal h2{margin:0 0 8px;font-size:15px;}
+  #config-modal p{font-size:12.5px;color:var(--dim);line-height:1.6;margin:0 0 12px;}
+  #config-modal a{color:var(--cyan);}
+  #config-modal input{
+    width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+    padding:10px;border-radius:6px;font-family:var(--mono);font-size:13px;margin-bottom:12px;
+  }
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;}
+  .modal-actions button{padding:8px 16px;border-radius:6px;font-size:13px;cursor:pointer;border:1px solid var(--border);}
+  #btn-save-token{background:var(--amber);color:#1a1200;font-weight:700;border-color:var(--amber);}
+  #btn-close-config{background:transparent;color:var(--dim);}
+
+  footer{text-align:center;font-size:11px;color:var(--dim);font-family:var(--mono);padding:10px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="navbar">
+    <div class="brand">
+      <span class="tag">GDM</span>
+      <h1>Identificador de Música &amp; Cifra</h1>
+    </div>
+    <button id="btn-config">⚙ Configurar</button>
+  </div>
+
+  <div id="main">
+
+    <div class="card" id="listen-panel">
+      <h2>Ouvir música ambiente</h2>
+      <button id="mic-btn" title="Ouvir">🎤</button>
+      <div id="status-text">Toque no microfone e deixe a música tocar por perto.</div>
+      <div id="level-bar"><div id="level-fill"></div></div>
+      <div class="msg error" id="msg-error"></div>
+      <div class="msg warn" id="msg-warn"></div>
+    </div>
+
+    <div class="card" id="result-panel">
+      <h2>Resultado</h2>
+      <div class="result-head">
+        <img id="res-cover" src="" alt="Capa">
+        <div class="info">
+          <p class="title" id="res-title">—</p>
+          <p class="artist" id="res-artist">—</p>
+          <div class="album" id="res-album"></div>
+        </div>
+      </div>
+
+      <div class="link-grid">
+        <a class="link-btn full" id="lnk-cifraclub" target="_blank" rel="noopener">🎸 Ver cifra no Cifra Club</a>
+        <a class="link-btn" id="lnk-ultimateguitar" target="_blank" rel="noopener">🎼 Ultimate Guitar</a>
+        <a class="link-btn" id="lnk-letras" target="_blank" rel="noopener">📄 Letras.mus.br</a>
+      </div>
+
+      <div id="lyrics-status"></div>
+      <div id="lyrics-box"></div>
+
+      <button id="btn-reset">🔄 Identificar outra música</button>
+    </div>
+
+  </div>
+
+  <footer>Reconhecimento via AudD.io · Letra via Lyrics.ovh (quando disponível) · Cifra via Cifra Club / Ultimate Guitar</footer>
+</div>
+
+<div id="config-overlay">
+  <div id="config-modal">
+    <h2>Chave de reconhecimento (AudD)</h2>
+    <p>
+      Este app usa a API gratuita <a href="https://dashboard.audd.io/" target="_blank" rel="noopener">AudD.io</a> para identificar a música pelo som captado no microfone.
+      Crie uma conta gratuita, copie o seu <b>API token</b> e cole abaixo. O token fica salvo apenas neste navegador.
+    </p>
+    <input type="text" id="input-token" placeholder="Cole aqui o seu AudD API token">
+    <div class="modal-actions">
+      <button id="btn-close-config">Fechar</button>
+      <button id="btn-save-token">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var TOKEN_KEY = 'audd_api_token';
+  var RECORD_MS = 9000;
+
+  var micBtn = document.getElementById('mic-btn');
+  var statusText = document.getElementById('status-text');
+  var levelFill = document.getElementById('level-fill');
+  var msgError = document.getElementById('msg-error');
+  var msgWarn = document.getElementById('msg-warn');
+  var listenPanel = document.getElementById('listen-panel');
+  var resultPanel = document.getElementById('result-panel');
+  var btnReset = document.getElementById('btn-reset');
+
+  var btnConfig = document.getElementById('btn-config');
+  var configOverlay = document.getElementById('config-overlay');
+  var btnCloseConfig = document.getElementById('btn-close-config');
+  var btnSaveToken = document.getElementById('btn-save-token');
+  var inputToken = document.getElementById('input-token');
+
+  var isListening = false;
+  var mediaStream = null;
+
+  function showError(msg){
+    msgError.textContent = msg;
+    msgError.style.display = msg ? 'block' : 'none';
+  }
+  function showWarn(msg){
+    msgWarn.textContent = msg;
+    msgWarn.style.display = msg ? 'block' : 'none';
+  }
+  function getToken(){
+    return (localStorage.getItem(TOKEN_KEY) || '').trim();
+  }
+
+  // ---- Config modal ----
+  function openConfig(){
+    inputToken.value = getToken();
+    configOverlay.style.display = 'flex';
+  }
+  function closeConfig(){
+    configOverlay.style.display = 'none';
+  }
+  btnConfig.addEventListener('click', openConfig);
+  btnCloseConfig.addEventListener('click', closeConfig);
+  configOverlay.addEventListener('click', function(e){
+    if(e.target === configOverlay) closeConfig();
+  });
+  btnSaveToken.addEventListener('click', function(){
+    var v = inputToken.value.trim();
+    if(v){
+      localStorage.setItem(TOKEN_KEY, v);
+      showWarn('');
+      showError('');
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+    closeConfig();
+  });
+
+  // ---- Mic capture + level meter ----
+  function startLevelMeter(stream){
+    try{
+      var AudioCtx = window.AudioContext || window.webkitAudioContext;
+      var ctx = new AudioCtx();
+      var source = ctx.createMediaStreamSource(stream);
+      var analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+      var data = new Uint8Array(analyser.frequencyBinCount);
+      var rafId;
+      function tick(){
+        analyser.getByteFrequencyData(data);
+        var sum = 0;
+        for(var i=0;i<data.length;i++) sum += data[i];
+        var avg = sum / data.length;
+        levelFill.style.width = Math.min(100, (avg/128)*100) + '%';
+        rafId = requestAnimationFrame(tick);
+      }
+      tick();
+      return function stop(){
+        cancelAnimationFrame(rafId);
+        try{ ctx.close(); }catch(e){}
+        levelFill.style.width = '0%';
+      };
+    }catch(e){
+      return function(){};
+    }
+  }
+
+  function pickMimeType(){
+    var candidates = ['audio/webm', 'audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4'];
+    for(var i=0;i<candidates.length;i++){
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(candidates[i])){
+        return candidates[i];
+      }
+    }
+    return '';
+  }
+
+  micBtn.addEventListener('click', function(){
+    if(isListening) return;
+
+    if(!getToken()){
+      showWarn('Configure o token da API AudD antes de identificar músicas.');
+      openConfig();
+      return;
+    }
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      showError('Este navegador não permite acesso ao microfone.');
+      return;
+    }
+
+    showError('');
+    showWarn('');
+    resultPanel.style.display = 'none';
+    listenPanel.style.display = 'flex';
+
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(function(stream){
+        mediaStream = stream;
+        isListening = true;
+        micBtn.classList.add('listening');
+        statusText.textContent = 'Ouvindo... deixe a música tocar (uns 9 segundos).';
+
+        var stopMeter = startLevelMeter(stream);
+        var mimeType = pickMimeType();
+        var recorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream);
+        var chunks = [];
+
+        recorder.addEventListener('dataavailable', function(e){
+          if(e.data && e.data.size > 0) chunks.push(e.data);
+        });
+
+        recorder.addEventListener('stop', function(){
+          stopMeter();
+          stream.getTracks().forEach(function(t){ t.stop(); });
+          isListening = false;
+          micBtn.classList.remove('listening');
+
+          var blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+          if(blob.size < 2000){
+            statusText.textContent = 'Toque no microfone e deixe a música tocar por perto.';
+            showError('Áudio muito curto ou silencioso. Tente novamente perto da música.');
+            return;
+          }
+          statusText.textContent = 'Identificando música...';
+          recognize(blob);
+        });
+
+        recorder.start();
+        setTimeout(function(){
+          if(recorder.state !== 'inactive') recorder.stop();
+        }, RECORD_MS);
+      })
+      .catch(function(err){
+        isListening = false;
+        micBtn.classList.remove('listening');
+        showError('Não foi possível acessar o microfone: ' + (err && err.message ? err.message : err));
+      });
+  });
+
+  // ---- AudD recognition ----
+  function recognize(blob){
+    var fd = new FormData();
+    fd.append('api_token', getToken());
+    fd.append('file', blob, 'sample.webm');
+    fd.append('return', 'apple_music,spotify');
+
+    fetch('https://api.audd.io/', { method: 'POST', body: fd })
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        if(data && data.status === 'success' && data.result){
+          showTrack(data.result);
+        } else if(data && data.error){
+          showError('Erro na API: ' + (data.error.error_message || 'token inválido ou limite atingido.'));
+          statusText.textContent = 'Toque no microfone e deixe a música tocar por perto.';
+        } else {
+          showWarn('Não consegui reconhecer essa música. Tente aproximar o microfone da fonte de som e tentar de novo.');
+          statusText.textContent = 'Toque no microfone e deixe a música tocar por perto.';
+        }
+      })
+      .catch(function(err){
+        showError('Falha ao consultar o serviço de reconhecimento: ' + err.message);
+        statusText.textContent = 'Toque no microfone e deixe a música tocar por perto.';
+      });
+  }
+
+  function showTrack(result){
+    var title = result.title || 'Título desconhecido';
+    var artist = result.artist || 'Artista desconhecido';
+    var album = result.album || '';
+
+    document.getElementById('res-title').textContent = title;
+    document.getElementById('res-artist').textContent = artist;
+    document.getElementById('res-album').textContent = album ? ('Álbum: ' + album) : '';
+
+    var cover = '';
+    if(result.spotify && result.spotify.album && result.spotify.album.images && result.spotify.album.images.length){
+      cover = result.spotify.album.images[0].url;
+    } else if(result.apple_music && result.apple_music.artwork){
+      cover = result.apple_music.artwork.url.replace('{w}','300').replace('{h}','300');
+    }
+    var coverImg = document.getElementById('res-cover');
+    coverImg.src = cover || '';
+    coverImg.style.display = cover ? 'block' : 'none';
+
+    var query = encodeURIComponent(artist + ' ' + title);
+    document.getElementById('lnk-cifraclub').href = 'https://www.cifraclub.com.br/busca/?q=' + query;
+    document.getElementById('lnk-ultimateguitar').href = 'https://www.ultimate-guitar.com/search.php?search_type=title&value=' + query;
+    document.getElementById('lnk-letras').href = 'https://www.letras.mus.br/?q=' + query;
+
+    listenPanel.style.display = 'none';
+    resultPanel.style.display = 'block';
+    statusText.textContent = 'Toque no microfone e deixe a música tocar por perto.';
+
+    fetchLyrics(artist, title);
+  }
+
+  function fetchLyrics(artist, title){
+    var lyricsBox = document.getElementById('lyrics-box');
+    var lyricsStatus = document.getElementById('lyrics-status');
+    lyricsBox.style.display = 'none';
+    lyricsStatus.textContent = 'Buscando letra...';
+
+    fetch('https://api.lyrics.ovh/v1/' + encodeURIComponent(artist) + '/' + encodeURIComponent(title))
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        if(data && data.lyrics){
+          lyricsBox.textContent = data.lyrics.trim();
+          lyricsBox.style.display = 'block';
+          lyricsStatus.textContent = 'Letra encontrada automaticamente:';
+        } else {
+          lyricsStatus.textContent = 'Letra não encontrada automaticamente — use o botão "Letras.mus.br" acima.';
+        }
+      })
+      .catch(function(){
+        lyricsStatus.textContent = 'Letra não encontrada automaticamente — use o botão "Letras.mus.br" acima.';
+      });
+  }
+
+  btnReset.addEventListener('click', function(){
+    resultPanel.style.display = 'none';
+    listenPanel.style.display = 'flex';
+    showError('');
+    showWarn('');
+  });
+
+})();
+</script>
+</body>
+</html>
