@@ -530,6 +530,7 @@
 
   function fetchViaCorsProxies(url){
     var proxies = [
+      'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url),
       'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
       'https://corsproxy.io/?url=' + encodeURIComponent(url)
     ];
@@ -552,25 +553,77 @@
       for(var i = 1; i < pres.length; i++){
         if(pres[i].textContent.length > best.textContent.length) best = pres[i];
       }
-      var text = best.textContent.replace(/ /g, ' ').trim();
+      var text = best.textContent.trim();
       return text.length > 80 ? text : null;
     }catch(e){
       return null;
     }
   }
 
-  function fetchCifra(artist, title){
+  // Remove ruido comum de metadados de reconhecimento (feat., remaster, ao vivo, etc.)
+  // antes de montar a URL/busca, ja que isso costuma quebrar o slug exato do Cifra Club.
+  function cleanForSearch(str){
+    return (str || '')
+      .replace(/\((feat|ft|part)\.?[^)]*\)/gi, '')
+      .replace(/\((remaster|remasterizado|live|ao vivo|acustico|acustico)[^)]*\)/gi, '')
+      .replace(/\b(feat|ft|part)\.?\s.*/i, '')
+      .replace(/\s+-\s+(live|ao vivo|remaster|remasterizado).*/i, '')
+      .trim();
+  }
+  function primaryArtist(artist){
+    return (artist || '').split(/,|&|\be\b/i)[0].trim();
+  }
+
+  var CIFRACLUB_RESERVED = [
+    'busca','institucional','colecoes','top','videos','apps','contato','anuncie',
+    'ajuda','conteudo','account','login','cadastro','artistas','generos','forum','play'
+  ];
+
+  function findFirstSongLink(html, baseUrl){
+    try{
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      var anchors = Array.prototype.slice.call(doc.querySelectorAll('a[href]'));
+      for(var i = 0; i < anchors.length; i++){
+        var href = anchors[i].getAttribute('href') || '';
+        var abs;
+        try{ abs = new URL(href, baseUrl).href; }catch(e){ continue; }
+        var m = abs.match(/^https?:\/\/(?:www\.)?cifraclub\.com\.br\/([a-z0-9-]+)\/([a-z0-9-]+)\/?(?:[?#].*)?$/i);
+        if(m && CIFRACLUB_RESERVED.indexOf(m[1].toLowerCase()) === -1){
+          return 'https://www.cifraclub.com.br/' + m[1] + '/' + m[2] + '/';
+        }
+      }
+    }catch(e){}
+    return null;
+  }
+
+  function fetchCifra(artistRaw, titleRaw){
     var cifraBox = document.getElementById('cifra-box');
     var cifraStatus = document.getElementById('cifra-status');
     cifraBox.style.display = 'none';
     cifraStatus.textContent = 'Buscando cifra automaticamente...';
 
+    var artist = primaryArtist(cleanForSearch(artistRaw));
+    var title = cleanForSearch(titleRaw);
     var guessedUrl = 'https://www.cifraclub.com.br/' + slugify(artist) + '/' + slugify(title) + '/';
+    var searchUrl = 'https://www.cifraclub.com.br/busca/?q=' + encodeURIComponent(artist + ' ' + title);
 
-    fetchViaCorsProxies(guessedUrl)
-      .then(function(html){
+    function tryExtract(url){
+      return fetchViaCorsProxies(url).then(function(html){
         var text = extractCifraFromHtml(html);
-        if(!text) throw new Error('cifra não encontrada na página');
+        if(!text) throw new Error('sem cifra em ' + url);
+        return text;
+      });
+    }
+
+    tryExtract(guessedUrl)
+      .catch(function(){
+        return fetchViaCorsProxies(searchUrl).then(function(html){
+          var link = findFirstSongLink(html, searchUrl);
+          if(!link) throw new Error('nenhum resultado de busca encontrado');
+          return tryExtract(link);
+        });
+      })
+      .then(function(text){
         cifraBox.textContent = text;
         cifraBox.style.display = 'block';
         cifraStatus.textContent = 'Cifra carregada automaticamente (tom conforme publicado na fonte):';
