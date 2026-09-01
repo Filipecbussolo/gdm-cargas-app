@@ -96,7 +96,13 @@
     padding:14px;white-space:pre-wrap;font-family:var(--mono);font-size:12.5px;line-height:1.6;max-height:340px;overflow-y:auto;
     display:none;
   }
-  #cifra-status,#lyrics-status{font-size:12px;color:var(--dim);font-family:var(--mono);margin-top:8px;}
+  #cifra-status,#lyrics-status,#chords-status{font-size:12px;color:var(--dim);font-family:var(--mono);margin-top:8px;}
+
+  .chords-box{
+    margin-top:8px;background:var(--panel-2);border:1px solid var(--amber);border-radius:8px;
+    padding:16px 14px;font-family:var(--mono);font-size:20px;font-weight:700;letter-spacing:.04em;
+    color:var(--amber);line-height:1.9;word-spacing:.2em;display:none;
+  }
 
   #btn-reset{margin-top:16px;background:transparent;border:1px solid var(--border);color:var(--dim);padding:8px 14px;border-radius:6px;font-size:12.5px;cursor:pointer;width:100%;}
   #btn-reset:hover{border-color:var(--red);color:var(--red);}
@@ -159,7 +165,11 @@
         </div>
       </div>
 
-      <p class="section-label">🎸 Cifra (violão)</p>
+      <p class="section-label">🎸 Acordes reconhecidos no áudio (sempre disponível)</p>
+      <div id="chords-status"></div>
+      <div id="chords-box" class="chords-box"></div>
+
+      <p class="section-label">🎼 Cifra oficial completa (Cifra Club, se disponível)</p>
       <div id="cifra-status"></div>
       <div id="cifra-box"></div>
 
@@ -179,7 +189,7 @@
 
   </div>
 
-  <footer>Reconhecimento via AudD.io · Tom detectado no navegador a partir do áudio gravado · Letra via Lyrics.ovh · Cifra via Cifra Club (busca automática)</footer>
+  <footer>Reconhecimento via AudD.io · Tom e acordes detectados no navegador a partir do áudio gravado · Letra via Lyrics.ovh · Cifra oficial via Cifra Club (melhor esforço)</footer>
 </div>
 
 <div id="config-overlay">
@@ -202,7 +212,7 @@
   'use strict';
 
   var TOKEN_KEY = 'audd_api_token';
-  var RECORD_MS = 9000;
+  var RECORD_MS = 15000;
 
   var micBtn = document.getElementById('mic-btn');
   var statusText = document.getElementById('status-text');
@@ -322,7 +332,7 @@
         mediaStream = stream;
         isListening = true;
         micBtn.classList.add('listening');
-        statusText.textContent = 'Ouvindo... deixe a música tocar (uns 9 segundos).';
+        statusText.textContent = 'Ouvindo... deixe a música tocar (uns 15 segundos).';
 
         var stopMeter = startLevelMeter(stream);
         var mimeType = pickMimeType();
@@ -346,8 +356,8 @@
             return;
           }
           statusText.textContent = 'Identificando música e analisando o tom...';
-          var keyPromise = detectKey(blob).catch(function(){ return null; });
-          recognize(blob, keyPromise);
+          var analysisPromise = analyzeAudio(blob).catch(function(){ return { key: null, chords: [] }; });
+          recognize(blob, analysisPromise);
         });
 
         recorder.start();
@@ -363,7 +373,7 @@
   });
 
   // ---- AudD recognition ----
-  function recognize(blob, keyPromise){
+  function recognize(blob, analysisPromise){
     var fd = new FormData();
     fd.append('api_token', getToken());
     fd.append('file', blob, 'sample.webm');
@@ -373,8 +383,8 @@
       .then(function(res){ return res.json(); })
       .then(function(data){
         if(data && data.status === 'success' && data.result){
-          (keyPromise || Promise.resolve(null)).then(function(keyLabel){
-            showTrack(data.result, keyLabel);
+          (analysisPromise || Promise.resolve({ key: null, chords: [] })).then(function(analysis){
+            showTrack(data.result, analysis.key, analysis.chords);
           });
         } else if(data && data.error){
           showError('Erro na API: ' + (data.error.error_message || 'token inválido ou limite atingido.'));
@@ -390,7 +400,7 @@
       });
   }
 
-  function showTrack(result, keyLabel){
+  function showTrack(result, keyLabel, chords){
     var title = result.title || 'Título desconhecido';
     var artist = result.artist || 'Artista desconhecido';
     var album = result.album || '';
@@ -401,6 +411,17 @@
     document.getElementById('res-key').textContent = keyLabel
       ? ('Tom detectado (estimativa pelo áudio captado): ' + keyLabel)
       : 'Tom detectado: não foi possível estimar com esta gravação.';
+
+    var chordsBox = document.getElementById('chords-box');
+    var chordsStatus = document.getElementById('chords-status');
+    if(chords && chords.length){
+      chordsBox.textContent = chords.join('   ');
+      chordsBox.style.display = 'block';
+      chordsStatus.textContent = 'Acordes reconhecidos no trecho gravado (~' + Math.round(RECORD_MS / 1000) + 's), direto do áudio — sem depender de nenhum site:';
+    } else {
+      chordsBox.style.display = 'none';
+      chordsStatus.textContent = 'Não consegui reconhecer acordes claros nesta gravação. Tente de novo mais perto da música, com menos ruído ao redor.';
+    }
 
     var cover = '';
     if(result.spotify && result.spotify.album && result.spotify.album.images && result.spotify.album.images.length){
@@ -462,13 +483,16 @@
     return den ? (num / den) : 0;
   }
 
-  function computeKeyFromSamples(samples, sampleRate){
-    // Decima o sinal para reduzir custo, mantendo resolução suficiente até ~1.5kHz.
+  // Extrai um vetor de 12 classes de altura (chroma) normalizado a partir de uma
+  // janela de amostras de áudio, via banco de filtros Goertzel. Reaproveitado
+  // tanto para estimar o tom da música quanto para reconhecer acordes por trecho.
+  function computeChroma(samples, sampleRate){
     var targetRate = 6000;
     var factor = Math.max(1, Math.floor(sampleRate / targetRate));
     var decimated = [];
     for(var i = 0; i < samples.length; i += factor) decimated.push(samples[i]);
     var effRate = sampleRate / factor;
+    if(decimated.length < 32) return null;
 
     var chroma = new Array(12).fill(0);
     for(var midi = 36; midi < 96; midi++){
@@ -481,6 +505,12 @@
     var maxChroma = Math.max.apply(null, chroma);
     if(!maxChroma) return null;
     for(var c = 0; c < 12; c++) chroma[c] /= maxChroma;
+    return chroma;
+  }
+
+  function computeKeyFromSamples(samples, sampleRate){
+    var chroma = computeChroma(samples, sampleRate);
+    if(!chroma) return null;
 
     var best = null, bestScore = -Infinity;
     for(var tonic = 0; tonic < 12; tonic++){
@@ -498,19 +528,74 @@
     return best;
   }
 
-  function detectKey(blob){
+  // ---- Reconhecimento de acordes direto do áudio (sem depender de nenhum site externo) ----
+  var CHORD_TEMPLATES = (function(){
+    var list = [];
+    for(var root = 0; root < 12; root++){
+      list.push({ label: NOTE_NAMES[root], tones: [root, (root + 4) % 12, (root + 7) % 12] });
+    }
+    for(var root2 = 0; root2 < 12; root2++){
+      list.push({ label: NOTE_NAMES[root2] + 'm', tones: [root2, (root2 + 3) % 12, (root2 + 7) % 12] });
+    }
+    return list;
+  })();
+
+  function matchChord(chroma){
+    var best = null, bestScore = -Infinity;
+    for(var i = 0; i < CHORD_TEMPLATES.length; i++){
+      var t = CHORD_TEMPLATES[i];
+      var inChord = chroma[t.tones[0]] + chroma[t.tones[1]] + chroma[t.tones[2]];
+      var outChord = 0;
+      for(var pc = 0; pc < 12; pc++){
+        if(t.tones.indexOf(pc) === -1) outChord += chroma[pc];
+      }
+      var score = inChord - outChord * 0.5;
+      if(score > bestScore){ bestScore = score; best = t.label; }
+    }
+    return best;
+  }
+
+  function detectChords(samples, sampleRate){
+    var windowSec = 1.0;
+    var windowSize = Math.floor(sampleRate * windowSec);
+    if(windowSize <= 0) return [];
+    var raw = [];
+    for(var start = 0; start + windowSize <= samples.length; start += windowSize){
+      var windowSamples = samples.subarray(start, start + windowSize);
+      var chroma = computeChroma(windowSamples, sampleRate);
+      raw.push(chroma ? matchChord(chroma) : null);
+    }
+    // Suaviza janelas isoladas que destoam das vizinhas (provável ruído/transição).
+    for(var i = 1; i < raw.length - 1; i++){
+      if(raw[i] !== raw[i - 1] && raw[i] !== raw[i + 1] && raw[i - 1] === raw[i + 1]){
+        raw[i] = raw[i - 1];
+      }
+    }
+    // Compacta repetições consecutivas em uma sequência de acordes.
+    var sequence = [];
+    for(var j = 0; j < raw.length; j++){
+      if(raw[j] && (sequence.length === 0 || sequence[sequence.length - 1] !== raw[j])){
+        sequence.push(raw[j]);
+      }
+    }
+    return sequence;
+  }
+
+  function analyzeAudio(blob){
     return blob.arrayBuffer().then(function(buf){
       var DecodeCtx = window.AudioContext || window.webkitAudioContext;
-      if(!DecodeCtx) return null;
+      if(!DecodeCtx) return { key: null, chords: [] };
       var ctx = new DecodeCtx();
       return ctx.decodeAudioData(buf).then(function(audioBuffer){
         var samples = audioBuffer.getChannelData(0);
-        var key = computeKeyFromSamples(samples, audioBuffer.sampleRate);
+        var sampleRate = audioBuffer.sampleRate;
+        var key = computeKeyFromSamples(samples, sampleRate);
+        var chords = detectChords(samples, sampleRate);
         try{ ctx.close(); }catch(e){}
-        return key;
+        return { key: key, chords: chords };
       }).catch(function(){
         try{ ctx.close(); }catch(e){}
-        return null;
+        return { key: null, chords: [] };
       });
     });
   }
