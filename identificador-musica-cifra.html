@@ -97,6 +97,7 @@
     display:none;
   }
   #cifra-status,#lyrics-status,#chords-status{font-size:12px;color:var(--dim);font-family:var(--mono);margin-top:8px;}
+  #cifra-box.cifra-rendered b{color:var(--amber);font-weight:700;}
 
   .chords-box{
     margin-top:8px;background:var(--panel-2);border:1px solid var(--amber);border-radius:8px;
@@ -629,6 +630,36 @@
     return attempt(0);
   }
 
+  // Reconstrói o bloco de cifra mantendo só texto e negrito (acordes), sem
+  // atributos/scripts/links da página de origem — evita injetar HTML não
+  // confiável e ainda preserva qual parte é acorde para poder estilizar.
+  function sanitizeCifraNode(sourceEl){
+    var out = document.createElement('div');
+    (function walk(node, parent){
+      var children = node.childNodes;
+      for(var i = 0; i < children.length; i++){
+        var child = children[i];
+        if(child.nodeType === 3){
+          parent.appendChild(document.createTextNode(child.textContent));
+        } else if(child.nodeType === 1){
+          var tag = child.tagName.toLowerCase();
+          if(tag === 'b' || tag === 'strong'){
+            var b = document.createElement('b');
+            b.textContent = child.textContent;
+            parent.appendChild(b);
+          } else if(tag === 'br'){
+            parent.appendChild(document.createElement('br'));
+          } else if(tag === 'script' || tag === 'style'){
+            // ignora completamente: nunca inclui o conteúdo desses elementos
+          } else {
+            walk(child, parent);
+          }
+        }
+      }
+    })(sourceEl, out);
+    return out;
+  }
+
   function extractCifraFromHtml(html){
     try{
       var doc = new DOMParser().parseFromString(html, 'text/html');
@@ -638,8 +669,8 @@
       for(var i = 1; i < pres.length; i++){
         if(pres[i].textContent.length > best.textContent.length) best = pres[i];
       }
-      var text = best.textContent.trim();
-      return text.length > 80 ? text : null;
+      if(best.textContent.trim().length <= 80) return null;
+      return sanitizeCifraNode(best);
     }catch(e){
       return null;
     }
@@ -694,9 +725,9 @@
 
     function tryExtract(url){
       return fetchViaCorsProxies(url).then(function(html){
-        var text = extractCifraFromHtml(html);
-        if(!text) throw new Error('sem cifra em ' + url);
-        return text;
+        var node = extractCifraFromHtml(html);
+        if(!node) throw new Error('sem cifra em ' + url);
+        return node;
       });
     }
 
@@ -708,8 +739,10 @@
           return tryExtract(link);
         });
       })
-      .then(function(text){
-        cifraBox.textContent = text;
+      .then(function(node){
+        cifraBox.innerHTML = '';
+        cifraBox.className = 'cifra-rendered';
+        cifraBox.appendChild(node);
         cifraBox.style.display = 'block';
         cifraStatus.textContent = 'Cifra carregada automaticamente (tom conforme publicado na fonte):';
       })
